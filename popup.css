@@ -355,10 +355,17 @@ body {
 .df-size { font-size: 10px; color: var(--fg2); font-weight: 600; letter-spacing: 0.3px; }
 
 .df-progress {
-  display: none;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  margin-bottom: 0;
+  transition: max-height 0.4s ease, opacity 0.4s ease, margin-bottom 0.4s ease;
+}
+.df-progress.show {
+  max-height: 60px;
+  opacity: 1;
   margin-bottom: 10px;
 }
-.df-progress.show { display: block; }
 .df-progress-label { font-size: 10px; color: var(--fg2); margin-bottom: 6px; font-weight: 500; }
 .df-bar {
   height: 6px;

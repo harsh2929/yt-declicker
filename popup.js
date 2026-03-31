@@ -358,6 +358,10 @@ dfBtn.addEventListener("click", () => {
 
     if (resp && resp.ok) {
       dfDownloaded = true;
+      // Show "Model loaded!" briefly, then collapse the progress bar
+      dfProgressLabel.textContent = "Model loaded!";
+      dfBarFill.style.width = "100%";
+      setTimeout(() => dfProgress.classList.remove("show"), 5000);
       updateModeUI("deep", true);
       // Persist download flag and new mode
       saveToStorage({ ytdc_df_downloaded: true, ytdc_mode: "deep" });
