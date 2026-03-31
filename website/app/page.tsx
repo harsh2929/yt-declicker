@@ -511,50 +511,50 @@ function Engines() {
     {
       id: 'eq',
       name: 'EQ LITE',
-      badge: 'ZERO DOWNLOAD',
+      badge: 'INSTANT ON',
       accentColor: '#30D158',
       bg: '#F0FFF4',
       emoji: '🎚',
-      desc: 'Multi-band parametric EQ targeting 1–6 kHz click transients, chained with a dynamic compressor for fast attack. Near-instant, zero cost.',
-      stats: [
-        { k: 'MODEL SIZE', v: 'NONE' },
-        { k: 'LATENCY',    v: '~0 ms' },
-        { k: 'CPU LOAD',   v: 'LOW' },
-        { k: 'TYPE',       v: 'EQ + COMP' },
+      tagline: 'Set it. Forget it.',
+      bestFor: 'Casual viewers who just want it to work',
+      bars: [
+        { label: '⚡ Reaction Speed',   value: 100, lo: 'Slow', hi: 'Instant',  caption: 'Instant'     },
+        { label: '🎯 Noise Removal',    value: 68,  lo: 'Light', hi: 'Max',     caption: 'Solid'       },
+        { label: '🔋 Battery Friendly', value: 96,  lo: 'Heavy', hi: 'Tiny',    caption: 'Barely any'  },
+        { label: '📦 Setup Effort',     value: 100, lo: 'Hard',  hi: 'None',    caption: 'Zero!'       },
       ],
-      pros: ['Instant activation', 'Nothing to download', 'Negligible CPU', 'Great daily driver'],
     },
     {
       id: 'rnn',
       name: 'RNNOISE',
-      badge: 'ML-POWERED',
+      badge: 'SMART BRAIN',
       accentColor: '#64D2FF',
       bg: '#F0FAFF',
       emoji: '🧠',
-      desc: "Mozilla's RNNoise recurrent neural network. 150 KB bundled inside the extension — no download, broader suppression than EQ alone.",
-      stats: [
-        { k: 'MODEL SIZE', v: '150 KB' },
-        { k: 'LATENCY',    v: '~15 ms' },
-        { k: 'CPU LOAD',   v: 'MEDIUM' },
-        { k: 'TYPE',       v: 'NEURAL NET' },
+      tagline: 'Tiny brain. Big results.',
+      bestFor: 'Users who want smarter filtering, zero wait',
+      bars: [
+        { label: '⚡ Reaction Speed',   value: 88,  lo: 'Slow', hi: 'Instant',  caption: 'Very fast'   },
+        { label: '🎯 Noise Removal',    value: 84,  lo: 'Light', hi: 'Max',     caption: 'Great'       },
+        { label: '🔋 Battery Friendly', value: 74,  lo: 'Heavy', hi: 'Tiny',    caption: 'Light'       },
+        { label: '📦 Setup Effort',     value: 95,  lo: 'Hard',  hi: 'None',    caption: 'Already in!' },
       ],
-      pros: ['Bundled — no wait', 'ML-grade quality', 'Kills fan noise too', 'Great voice clarity'],
     },
     {
       id: 'deep',
       name: 'DEEPFILTER',
-      badge: 'STATE OF ART',
+      badge: 'BEAST MODE',
       accentColor: '#BF5AF2',
       bg: '#FBF0FF',
       emoji: '🔮',
-      desc: 'DeepFilterNet3 — a full deep-learning model downloaded once (~2 MB) and cached in IndexedDB. Maximum possible audio quality.',
-      stats: [
-        { k: 'MODEL SIZE', v: '~2 MB' },
-        { k: 'LATENCY',    v: '~25 ms' },
-        { k: 'CPU LOAD',   v: 'HIGH' },
-        { k: 'TYPE',       v: 'DEEP AI' },
+      tagline: 'Maximum power. No mercy.',
+      bestFor: 'Audiophiles who demand absolute perfection',
+      bars: [
+        { label: '⚡ Reaction Speed',   value: 72,  lo: 'Slow', hi: 'Instant',  caption: 'Quick enough'},
+        { label: '🎯 Noise Removal',    value: 100, lo: 'Light', hi: 'Max',     caption: 'ABSOLUTE MAX'},
+        { label: '🔋 Battery Friendly', value: 50,  lo: 'Heavy', hi: 'Tiny',    caption: 'Worth it'    },
+        { label: '📦 Setup Effort',     value: 65,  lo: 'Hard',  hi: 'None',    caption: '1 download'  },
       ],
-      pros: ['State-of-the-art', 'Full-band filtering', 'Cached locally', 'Audiophile-grade'],
     },
   ]
 
@@ -571,13 +571,14 @@ function Engines() {
             PICK YOUR<br />
             <span className="text-yellow">ENGINE</span>
           </h2>
+          <p className="text-[#888] font-mono text-[13px] mt-5 tracking-wide">Tap the one that matches your vibe</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {engines.map((e, i) => (
             <div
               key={e.id}
-              className={`neo-card-lift reveal ${visible ? 'visible' : ''} relative p-7 overflow-hidden`}
+              className={`neo-card-lift reveal ${visible ? 'visible' : ''} relative overflow-hidden flex flex-col`}
               style={{
                 background: e.bg,
                 border: `3px solid ${e.accentColor}`,
@@ -585,36 +586,74 @@ function Engines() {
                 transitionDelay: `${i * 130}ms`,
               }}
             >
-              {/* Badge */}
+              {/* Top strip */}
+              <div className="px-6 pt-6 pb-5">
+                {/* Badge */}
+                <div
+                  className="inline-block font-mono font-black text-[9px] tracking-[1.5px] px-2.5 py-1 border-2 border-ink mb-4"
+                  style={{ background: e.accentColor }}
+                >
+                  {e.badge}
+                </div>
+
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="text-3xl">{e.emoji}</span>
+                  <h3 className="font-mono font-black text-[22px] tracking-[2px]">{e.name}</h3>
+                </div>
+                <p className="font-mono font-bold text-[13px] text-[#555] mb-5">{e.tagline}</p>
+
+                {/* Stat bars */}
+                <div className="flex flex-col gap-4">
+                  {e.bars.map(bar => (
+                    <div key={bar.label}>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="font-mono font-bold text-[11px] tracking-wide">{bar.label}</span>
+                        <span
+                          className="font-mono font-black text-[10px] tracking-[0.5px] px-1.5 py-0.5"
+                          style={{ background: e.accentColor, border: '1.5px solid #111' }}
+                        >
+                          {bar.caption}
+                        </span>
+                      </div>
+                      {/* Bar track */}
+                      <div
+                        className="w-full h-4 border-2 border-ink overflow-hidden"
+                        style={{ background: 'rgba(0,0,0,0.08)' }}
+                      >
+                        {/* Bar fill — animates width when visible */}
+                        <div
+                          style={{
+                            height: '100%',
+                            width: visible ? `${bar.value}%` : '0%',
+                            background: e.accentColor,
+                            borderRight: bar.value < 100 ? '2px solid #111' : 'none',
+                            transition: `width 0.8s cubic-bezier(0.22,1,0.36,1) ${i * 130 + 200}ms`,
+                            position: 'relative',
+                          }}
+                        >
+                          {/* Shine stripe */}
+                          <div style={{
+                            position: 'absolute', top: 0, left: 0, right: 0,
+                            height: '40%', background: 'rgba(255,255,255,0.28)',
+                          }} />
+                        </div>
+                      </div>
+                      <div className="flex justify-between mt-0.5">
+                        <span className="font-mono text-[9px] text-[#999]">{bar.lo}</span>
+                        <span className="font-mono text-[9px] text-[#999]">{bar.hi}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Best-for footer strip */}
               <div
-                className="absolute top-4 right-4 font-mono font-black text-[9px] tracking-[1px] px-2.5 py-1 border-2 border-ink"
-                style={{ background: e.accentColor }}
+                className="mt-auto px-6 py-3 border-t-2 border-ink font-mono text-[11px] font-bold tracking-wide flex items-center gap-2"
+                style={{ background: 'rgba(0,0,0,0.06)' }}
               >
-                {e.badge}
-              </div>
-
-              <div className="text-4xl mb-4 mt-1">{e.emoji}</div>
-              <h3 className="font-mono font-black text-[26px] tracking-[2px] mb-3">{e.name}</h3>
-              <p className="text-[#444] text-[13px] leading-relaxed mb-5">{e.desc}</p>
-
-              {/* Stats 2×2 grid */}
-              <div className="grid grid-cols-2 gap-2 mb-5">
-                {e.stats.map(s => (
-                  <div key={s.k} className="bg-white/60 border-2 border-ink px-3 py-2">
-                    <div className="font-mono text-[9px] text-[#888] tracking-[1px] mb-0.5">{s.k}</div>
-                    <div className="font-mono font-black text-[13px]">{s.v}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Pros */}
-              <div className="flex flex-col gap-1.5">
-                {e.pros.map(p => (
-                  <div key={p} className="flex items-center gap-2 text-[13px]">
-                    <span className="font-black" style={{ color: e.accentColor }}>✓</span>
-                    <span>{p}</span>
-                  </div>
-                ))}
+                <span style={{ color: e.accentColor }}>▶</span>
+                <span>{e.bestFor}</span>
               </div>
             </div>
           ))}
