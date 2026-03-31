@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=340">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<div class="container">
+
+  <header class="header">
+    <div class="brand">
+      <div class="brand-icon">&#9000;</div>
+      <div class="brand-text">
+        <h1>DECLICKER</h1>
+        <span class="brand-sub">kill keyboard noise</span>
+      </div>
+    </div>
+    <div class="header-controls">
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme">&#9728;</button>
+      <div class="status-badge" id="status">OFF</div>
+    </div>
+  </header>
+
+  <div class="inject-row" id="injectRow" style="display:none">
+    <button class="btn btn-inject" id="injectBtn">INJECT &amp; RETRY</button>
+  </div>
+
+  <div class="power-row">
+    <span class="power-label">Power</span>
+    <button class="power-btn" id="toggle">OFF</button>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Engine</div>
+    <div class="engine-grid">
+      <button class="engine-card active" data-mode="eq">
+        <div class="engine-name">EQ</div>
+        <div class="engine-tag">LITE</div>
+        <div class="engine-desc">Notch filters + compressor. Zero latency.</div>
+      </button>
+      <button class="engine-card" data-mode="ml">
+        <div class="engine-name">RNNoise</div>
+        <div class="engine-tag tag-ml">ML</div>
+        <div class="engine-desc">Mozilla neural net. Kills all BG noise.</div>
+      </button>
+      <button class="engine-card" data-mode="deep">
+        <div class="engine-name">DeepFilter</div>
+        <div class="engine-tag tag-deep">DL</div>
+        <div class="engine-desc">DeepFilterNet3. State of the art.</div>
+      </button>
+    </div>
+  </div>
+
+  <div class="df-panel" id="dfPanel">
+    <div class="df-row">
+      <span class="df-icon" id="dfIcon">&#9675;</span>
+      <span class="df-text" id="dfText">Model not downloaded</span>
+      <span class="df-size">~2 MB</span>
+    </div>
+    <div class="df-progress" id="dfProgress">
+      <div class="df-progress-label" id="dfProgressLabel">Downloading WASM...</div>
+      <div class="df-bar">
+        <div class="df-bar-fill" id="dfBarFill"></div>
+      </div>
+    </div>
+    <button class="btn btn-download" id="dfBtn">DOWNLOAD MODEL</button>
+    <button class="btn btn-delete" id="dfDeleteBtn">DELETE MODEL</button>
+  </div>
+
+  <div class="section">
+    <div class="section-label" id="intensityLabel">Intensity</div>
+    <div class="range-row">
+      <input type="range" id="intensity" min="0" max="100" value="70">
+      <span class="range-val" id="intensityVal">70</span>
+    </div>
+  </div>
+
+  <div class="presets-section" id="eqPresets">
+    <div class="section-label">Presets</div>
+    <div class="preset-row">
+      <button class="btn btn-preset" data-val="30">LIGHT</button>
+      <button class="btn btn-preset" data-val="60">MED</button>
+      <button class="btn btn-preset active" data-val="85">HEAVY</button>
+      <button class="btn btn-preset" data-val="100">NUKE</button>
+    </div>
+  </div>
+
+  <footer class="footer" id="infoText">
+    Targets 1&ndash;6 kHz click transients. Voice stays clean.
+  </footer>
+
+</div>
+<script src="popup.js"></script>
+</body>
+</html>

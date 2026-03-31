@@ -1,0 +1,4 @@
+website/node_modules/
+website/.next/
+website/.env*.local
+*.DS_Store

@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "YT DeClicker",
+  "version": "3.1.0",
+  "description": "Filters keyboard noise from YouTube — EQ, RNNoise ML, or DeepFilterNet3 deep learning",
+  "permissions": ["storage", "scripting", "activeTab", "unlimitedStorage"],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "*://cdn.mezon.ai/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "rnnoise-worklet.js",
+        "rnnoise.wasm",
+        "rnnoise_simd.wasm",
+        "deepfilter-worklet.js"
+      ],
+      "matches": ["*://*.youtube.com/*"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": { "48": "icon48.png" }
+  },
+  "icons": { "48": "icon48.png", "128": "icon128.png" }
+}

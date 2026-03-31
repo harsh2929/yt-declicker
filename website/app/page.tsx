@@ -1,0 +1,670 @@
+'use client'
+
+import React, { useEffect, useRef, useState } from 'react'
+
+const GITHUB_URL = 'https://github.com/harsh2929/yt-declicker'
+
+function GitHubIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+    </svg>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Waveform bar heights ─ hardcoded to avoid SSR/client hydration mismatch
+const NOISY_BARS = [
+  12, 10, 9, 76, 11, 8, 13, 84, 9, 7, 11, 10, 72, 8, 12, 9, 90, 10, 7, 14,
+  9, 80, 8, 11, 10, 6, 86, 9, 12, 13, 74, 8, 11, 88, 7, 10, 9, 70, 11, 8,
+]
+const CLEAN_BARS = [
+  33, 37, 41, 44, 46, 43, 39, 33, 27, 22, 19, 18, 20, 24, 30, 36, 41, 44,
+  45, 42, 37, 31, 25, 21, 19, 20, 23, 28, 35, 41, 44, 44, 41, 36, 30, 24,
+  21, 20, 22, 27,
+]
+
+const FLOATING_KEYS = [
+  { char: '↵', x: '8%',  y: '22%', rot: '-8deg',  dur: '3.2s', delay: '0s'    },
+  { char: '⌫', x: '14%', y: '68%', rot: '5deg',   dur: '4.1s', delay: '0.6s'  },
+  { char: 'k', x: '4%',  y: '45%', rot: '-4deg',  dur: '3.7s', delay: '1.2s'  },
+  { char: '⇥', x: '88%', y: '30%', rot: '7deg',   dur: '3.4s', delay: '0.3s'  },
+  { char: 'e', x: '92%', y: '60%', rot: '-6deg',  dur: '4.3s', delay: '0.9s'  },
+  { char: '⌃', x: '80%', y: '75%', rot: '4deg',   dur: '3.8s', delay: '1.5s'  },
+  { char: 's', x: '18%', y: '85%', rot: '-10deg', dur: '3.6s', delay: '0.4s'  },
+  { char: '⇧', x: '75%', y: '15%', rot: '9deg',   dur: '4.0s', delay: '1.8s'  },
+  { char: 'a', x: '55%', y: '88%', rot: '-3deg',  dur: '3.3s', delay: '0.7s'  },
+  { char: '⌘', x: '48%', y: '12%', rot: '6deg',   dur: '4.5s', delay: '1.1s'  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HOOK: scroll reveal
+// ─────────────────────────────────────────────────────────────────────────────
+function useReveal() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect() } },
+      { threshold: 0.12 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+  return { ref, visible }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NAV
+// ─────────────────────────────────────────────────────────────────────────────
+function Nav() {
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 16)
+    window.addEventListener('scroll', fn, { passive: true })
+    return () => window.removeEventListener('scroll', fn)
+  }, [])
+
+  return (
+    <nav
+      className="fixed top-0 left-0 right-0 z-50 bg-cream border-b-[3px] border-ink transition-shadow"
+      style={{ boxShadow: scrolled ? '0 5px 0 #111' : 'none' }}
+    >
+      <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+        {/* Logo */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-yellow font-mono font-black text-[11px] flex items-center justify-center border-2 border-ink rounded-sm shadow-[2px_2px_0_#111]">
+            YD
+          </div>
+          <span className="font-black text-[17px] tracking-tight leading-none">
+            YT De<span className="bg-yellow px-1 border border-ink">CLICKER</span>
+          </span>
+        </div>
+
+        {/* Links */}
+        <div className="hidden sm:flex items-center gap-5">
+          <a href="#engines" className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">ENGINES</a>
+          <a href="#features" className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">FEATURES</a>
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="neo-btn bg-cream text-ink px-3 py-2 text-[13px] gap-2"
+            aria-label="View on GitHub"
+          >
+            <GitHubIcon size={18} />
+            <span className="font-mono font-bold tracking-wide">GITHUB</span>
+          </a>
+          <a
+            href="#install"
+            className="neo-btn bg-ink text-yellow px-5 py-2 text-[13px] tracking-wide"
+          >
+            INSTALL FREE →
+          </a>
+        </div>
+      </div>
+    </nav>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAVEFORM
+// ─────────────────────────────────────────────────────────────────────────────
+function Waveform({ type, barH = 80 }: { type: 'noisy' | 'clean'; barH?: number }) {
+  const bars  = type === 'noisy' ? NOISY_BARS : CLEAN_BARS
+  const color = type === 'noisy' ? '#FF3B30'  : '#30D158'
+  const anim  = type === 'noisy' ? 'barNoise'  : 'barClean'
+
+  return (
+    <div className="flex items-end gap-[3px]" style={{ height: barH }}>
+      {bars.map((h, i) => (
+        <div
+          key={i}
+          style={{
+            flex: 1,
+            height: `${h}%`,
+            backgroundColor: color,
+            borderRadius: '2px 2px 0 0',
+            transformOrigin: 'bottom',
+            animation: `${anim} ${type === 'noisy'
+              ? 0.32 + (i % 7) * 0.06
+              : 0.7  + (i % 9) * 0.07}s ease-in-out infinite alternate`,
+            animationDelay: `${i * 0.022}s`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HERO
+// ─────────────────────────────────────────────────────────────────────────────
+function Hero() {
+  return (
+    <section className="grid-bg relative min-h-screen flex flex-col items-center justify-center pt-24 pb-16 px-5 overflow-hidden">
+      {/* Floating keyboard keys */}
+      {FLOATING_KEYS.map((k, i) => (
+        <div
+          key={i}
+          className="floating-key"
+          style={{
+            left: k.x,
+            top: k.y,
+            '--rot': k.rot,
+            '--dur': k.dur,
+            '--delay': k.delay,
+          } as React.CSSProperties}
+        >
+          {k.char}
+        </div>
+      ))}
+
+      <div className="relative z-10 max-w-[980px] w-full mx-auto text-center">
+        {/* Pre-badge */}
+        <div className="flex items-center justify-center gap-3 mb-7">
+          <span className="ticker-tag">⚡ CHROME EXTENSION</span>
+          <span
+            className="font-mono font-black text-[11px] tracking-[2px] px-3 py-1 border-2 border-ink bg-eq text-ink"
+            style={{ boxShadow: '2px 2px 0 #111' }}
+          >
+            FREE FOREVER
+          </span>
+        </div>
+
+        {/* Main headline */}
+        <h1
+          className="font-black leading-[0.88] tracking-[-4px] mb-0"
+          style={{ fontSize: 'clamp(56px, 11vw, 118px)' }}
+        >
+          <div>SILENCE</div>
+          <div className="mt-2">
+            <span
+              className="inline-block bg-yellow border-[3px] border-ink px-3 glitch-text"
+              data-text="THE CLACK"
+              style={{ boxShadow: '7px 7px 0 #111' }}
+            >
+              THE CLACK
+            </span>
+          </div>
+        </h1>
+
+        <p className="mt-8 mb-10 text-[#444] max-w-[540px] mx-auto leading-relaxed font-medium"
+          style={{ fontSize: 'clamp(15px, 1.8vw, 19px)' }}
+        >
+          YT DeClicker removes keyboard clicks from YouTube in real-time —
+          straight in your browser. Three engines, zero latency compromise.
+          Your ears deserve better.
+        </p>
+
+        {/* CTAs */}
+        <div className="flex flex-wrap gap-4 justify-center mb-14">
+          <a href="#install" className="neo-btn bg-ink text-cream px-8 py-4 text-[15px] tracking-wide">
+            ⬇ INSTALL FREE
+          </a>
+          <a href="#engines" className="neo-btn bg-cream text-ink px-8 py-4 text-[15px] tracking-wide">
+            SEE HOW IT WORKS →
+          </a>
+        </div>
+
+        {/* Before / After waveform */}
+        <div className="grid grid-cols-[1fr_40px_1fr] gap-4 items-center max-w-[780px] mx-auto">
+          <div className="neo-card p-5 bg-[#FFF5F5]">
+            <div className="font-mono font-black text-[10px] tracking-[2px] text-[#FF3B30] mb-3">BEFORE</div>
+            <Waveform type="noisy" barH={72} />
+            <div className="font-mono text-[10px] text-[#aaa] mt-2.5">click • clack • tap • thud</div>
+          </div>
+
+          <div className="text-center font-black text-3xl select-none">→</div>
+
+          <div className="neo-card p-5 bg-[#F0FFF4]">
+            <div className="font-mono font-black text-[10px] tracking-[2px] text-eq mb-3">AFTER</div>
+            <Waveform type="clean" barH={72} />
+            <div className="font-mono text-[10px] text-[#aaa] mt-2.5">pure • crisp • voice</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Scroll cue */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 font-mono text-[11px] text-[#aaa] flex flex-col items-center gap-1 animate-bounce">
+        <span>SCROLL</span>
+        <span>↓</span>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARQUEE
+// ─────────────────────────────────────────────────────────────────────────────
+function Marquee() {
+  const txt =
+    'KEYBOARD CLICKS • MECHANICAL NOISE • TYPING SOUNDS • KEY CLATTER • CLICK SUPPRESSION • REAL-TIME AI • YOUTUBE AUDIO • '
+  const block = txt.repeat(4)
+
+  return (
+    <div className="bg-ink border-y-[3px] border-ink py-3.5 overflow-hidden select-none">
+      <div
+        className="marquee-track flex whitespace-nowrap font-mono font-black text-yellow text-sm tracking-[1px]"
+      >
+        <span>{block}</span>
+        <span>{block}</span>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATS STRIP
+// ─────────────────────────────────────────────────────────────────────────────
+function StatsStrip() {
+  const { ref, visible } = useReveal()
+
+  const stats = [
+    { value: '~0ms', label: 'EQ LATENCY' },
+    { value: '3',    label: 'FILTER ENGINES' },
+    { value: '48K',  label: 'Hz SAMPLE RATE' },
+    { value: '100%', label: 'LOCAL PROCESSING' },
+  ]
+
+  return (
+    <section ref={ref} className="border-b-[3px] border-ink bg-yellow">
+      <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4">
+        {stats.map((s, i) => (
+          <div
+            key={s.label}
+            className={`reveal ${visible ? 'visible' : ''} p-8 text-center border-r-[3px] last:border-r-0 border-ink`}
+            style={{ transitionDelay: `${i * 100}ms` }}
+          >
+            <div className="stat-num">{s.value}</div>
+            <div className="font-mono font-bold text-[11px] tracking-[2px] text-[#555] mt-2">{s.label}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HOW IT WORKS
+// ─────────────────────────────────────────────────────────────────────────────
+function HowItWorks() {
+  const { ref, visible } = useReveal()
+
+  const steps = [
+    {
+      num: '01',
+      icon: '▶',
+      title: 'VIDEO PLAYS',
+      body:
+        'YouTube loads your video. The raw audio stream passes through your browser before reaching your speakers — just like always.',
+      bg: 'bg-cream',
+    },
+    {
+      num: '02',
+      icon: '🎛',
+      title: 'AUDIO INTERCEPTED',
+      body:
+        'DeClicker hooks into the Web Audio API and silently inserts a real-time filter chain between YouTube and your audio output.',
+      bg: 'bg-[#FFF9E0]',
+    },
+    {
+      num: '03',
+      icon: '✓',
+      title: 'CLICKS KILLED',
+      body:
+        'Your chosen engine — EQ, neural net, or deep AI — surgically strips click frequencies while leaving speech crystal clear.',
+      bg: 'bg-[#F0FFF4]',
+    },
+  ]
+
+  return (
+    <section className="py-24 px-5" ref={ref}>
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-16">
+          <div className="ticker-tag mx-auto mb-4 w-fit">THE MAGIC</div>
+          <h2 className="font-black tracking-[-3px] leading-none"
+            style={{ fontSize: 'clamp(38px, 6vw, 68px)' }}
+          >
+            HOW IT WORKS
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {steps.map((step, i) => (
+            <div
+              key={step.num}
+              className={`neo-card ${step.bg} p-8 reveal ${visible ? 'visible' : ''}`}
+              style={{ transitionDelay: `${i * 140}ms` }}
+            >
+              <div
+                className="font-mono font-black leading-none mb-5 select-none"
+                style={{ fontSize: '80px', color: 'rgba(17,17,17,0.07)' }}
+              >
+                {step.num}
+              </div>
+              <div className="text-5xl mb-4">{step.icon}</div>
+              <h3 className="font-mono font-black text-[17px] tracking-[1px] mb-3">{step.title}</h3>
+              <p className="text-[#444] leading-relaxed text-[14px]">{step.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENGINES
+// ─────────────────────────────────────────────────────────────────────────────
+function Engines() {
+  const { ref, visible } = useReveal()
+
+  const engines = [
+    {
+      id: 'eq',
+      name: 'EQ LITE',
+      badge: 'ZERO DOWNLOAD',
+      accentColor: '#30D158',
+      bg: '#F0FFF4',
+      emoji: '🎚',
+      desc: 'Multi-band parametric EQ targeting 1–6 kHz click transients, chained with a dynamic compressor for fast attack. Near-instant, zero cost.',
+      stats: [
+        { k: 'MODEL SIZE', v: 'NONE' },
+        { k: 'LATENCY',    v: '~0 ms' },
+        { k: 'CPU LOAD',   v: 'LOW' },
+        { k: 'TYPE',       v: 'EQ + COMP' },
+      ],
+      pros: ['Instant activation', 'Nothing to download', 'Negligible CPU', 'Great daily driver'],
+    },
+    {
+      id: 'rnn',
+      name: 'RNNOISE',
+      badge: 'ML-POWERED',
+      accentColor: '#64D2FF',
+      bg: '#F0FAFF',
+      emoji: '🧠',
+      desc: "Mozilla's RNNoise recurrent neural network. 150 KB bundled inside the extension — no download, broader suppression than EQ alone.",
+      stats: [
+        { k: 'MODEL SIZE', v: '150 KB' },
+        { k: 'LATENCY',    v: '~15 ms' },
+        { k: 'CPU LOAD',   v: 'MEDIUM' },
+        { k: 'TYPE',       v: 'NEURAL NET' },
+      ],
+      pros: ['Bundled — no wait', 'ML-grade quality', 'Kills fan noise too', 'Great voice clarity'],
+    },
+    {
+      id: 'deep',
+      name: 'DEEPFILTER',
+      badge: 'STATE OF ART',
+      accentColor: '#BF5AF2',
+      bg: '#FBF0FF',
+      emoji: '🔮',
+      desc: 'DeepFilterNet3 — a full deep-learning model downloaded once (~2 MB) and cached in IndexedDB. Maximum possible audio quality.',
+      stats: [
+        { k: 'MODEL SIZE', v: '~2 MB' },
+        { k: 'LATENCY',    v: '~25 ms' },
+        { k: 'CPU LOAD',   v: 'HIGH' },
+        { k: 'TYPE',       v: 'DEEP AI' },
+      ],
+      pros: ['State-of-the-art', 'Full-band filtering', 'Cached locally', 'Audiophile-grade'],
+    },
+  ]
+
+  return (
+    <section id="engines" className="bg-ink py-24 px-5" ref={ref}>
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-16">
+          <div className="font-mono font-black text-[11px] tracking-[3px] text-[#666] mb-4">THREE WEAPONS</div>
+          <h2
+            className="font-black leading-none tracking-[-3px] text-white"
+            style={{ fontSize: 'clamp(38px, 6vw, 68px)' }}
+          >
+            PICK YOUR<br />
+            <span className="text-yellow">ENGINE</span>
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {engines.map((e, i) => (
+            <div
+              key={e.id}
+              className={`neo-card-lift reveal ${visible ? 'visible' : ''} relative p-7 overflow-hidden`}
+              style={{
+                background: e.bg,
+                border: `3px solid ${e.accentColor}`,
+                boxShadow: `7px 7px 0 ${e.accentColor}`,
+                transitionDelay: `${i * 130}ms`,
+              }}
+            >
+              {/* Badge */}
+              <div
+                className="absolute top-4 right-4 font-mono font-black text-[9px] tracking-[1px] px-2.5 py-1 border-2 border-ink"
+                style={{ background: e.accentColor }}
+              >
+                {e.badge}
+              </div>
+
+              <div className="text-4xl mb-4 mt-1">{e.emoji}</div>
+              <h3 className="font-mono font-black text-[26px] tracking-[2px] mb-3">{e.name}</h3>
+              <p className="text-[#444] text-[13px] leading-relaxed mb-5">{e.desc}</p>
+
+              {/* Stats 2×2 grid */}
+              <div className="grid grid-cols-2 gap-2 mb-5">
+                {e.stats.map(s => (
+                  <div key={s.k} className="bg-white/60 border-2 border-ink px-3 py-2">
+                    <div className="font-mono text-[9px] text-[#888] tracking-[1px] mb-0.5">{s.k}</div>
+                    <div className="font-mono font-black text-[13px]">{s.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pros */}
+              <div className="flex flex-col gap-1.5">
+                {e.pros.map(p => (
+                  <div key={p} className="flex items-center gap-2 text-[13px]">
+                    <span className="font-black" style={{ color: e.accentColor }}>✓</span>
+                    <span>{p}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEATURES
+// ─────────────────────────────────────────────────────────────────────────────
+function Features() {
+  const { ref, visible } = useReveal()
+
+  const items = [
+    { icon: '🔒', title: '100% PRIVATE',        bg: '#FFF9E0', desc: 'All processing happens inside your browser tab. Your audio never touches any server — ever.'                                },
+    { icon: '▶',  title: 'ANY YOUTUBE VIDEO',   bg: '#F0FFF4', desc: 'Auto-hooks into the active video element. No manual setup, no URL restrictions, no exceptions.'                           },
+    { icon: '🎚', title: 'TUNABLE INTENSITY',   bg: '#F0FAFF', desc: 'Dial suppression from 0 to 100%. Subtle filtering or full nuclear option — a single slider.'                             },
+    { icon: '⚡', title: 'AUTO-RECONNECTS',     bg: '#FBF0FF', desc: 'Survives YouTube\'s client-side navigation. The hook persists across video changes without a page reload.'               },
+    { icon: '💾', title: 'SMART CACHING',       bg: '#FFF0F5', desc: 'DeepFilter\'s 2 MB model downloads exactly once and lives in IndexedDB. No repeat downloads on revisit.'                },
+    { icon: '🌓', title: 'DARK & LIGHT MODE',   bg: '#F5F0FF', desc: 'The popup UI adapts to your system theme. Looks polished in both light and dark.'                                        },
+    { icon: '🎛', title: 'PRESET MODES',        bg: '#FFF5E0', desc: 'EQ engine ships with LIGHT / MED / HEAVY / NUKE presets — tap once to jump to a calibrated setting.'                    },
+    { icon: '📦', title: 'SMART DOWNLOADS',     bg: '#F0FFFA', desc: 'Large WASM and model files transfer via a service-worker proxy that bypasses YouTube\'s strict CSP rules seamlessly.'    },
+  ]
+
+  return (
+    <section id="features" className="py-24 px-5 bg-cream" ref={ref}>
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-16">
+          <div className="ticker-tag mx-auto mb-4 w-fit">WHY YOU&apos;LL LOVE IT</div>
+          <h2 className="font-black tracking-[-3px] leading-none"
+            style={{ fontSize: 'clamp(38px, 6vw, 68px)' }}
+          >
+            BUILT RIGHT
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {items.map((item, i) => (
+            <div
+              key={item.title}
+              className={`neo-card neo-card-lift reveal ${visible ? 'visible' : ''} p-6`}
+              style={{ background: item.bg, transitionDelay: `${i * 70}ms` }}
+            >
+              <div className="text-4xl mb-4">{item.icon}</div>
+              <h3 className="font-mono font-black text-[12px] tracking-[1px] mb-2">{item.title}</h3>
+              <p className="text-[#555] text-[13px] leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRIVACY CALLOUT
+// ─────────────────────────────────────────────────────────────────────────────
+function PrivacyCallout() {
+  const { ref, visible } = useReveal()
+
+  return (
+    <section className="py-16 px-5 bg-ink border-y-[3px] border-ink" ref={ref}>
+      <div
+        className={`max-w-5xl mx-auto neo-card bg-yellow p-10 md:p-14 text-center reveal ${visible ? 'visible' : ''}`}
+        style={{ boxShadow: '10px 10px 0 #FFE500' }}
+      >
+        <div className="text-5xl mb-5">🔒</div>
+        <h2 className="font-black tracking-[-2px] mb-4" style={{ fontSize: 'clamp(28px, 5vw, 52px)' }}>
+          YOUR AUDIO NEVER LEAVES<br />YOUR BROWSER.
+        </h2>
+        <p className="text-[#444] text-[16px] max-w-[580px] mx-auto leading-relaxed">
+          No cloud processing. No microphone access. No telemetry. The extension
+          intercepts the existing audio stream inside your tab — nothing is
+          recorded, transmitted, or stored anywhere outside your own device.
+        </p>
+        <div className="flex flex-wrap gap-4 justify-center mt-8">
+          {['NO SERVERS', 'NO ACCOUNT', 'NO MICROPHONE', 'NO TRACKING'].map(badge => (
+            <div
+              key={badge}
+              className="font-mono font-black text-[11px] tracking-[2px] border-2 border-ink px-4 py-2 bg-ink text-yellow"
+              style={{ boxShadow: '3px 3px 0 #111' }}
+            >
+              ✓ {badge}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INSTALL CTA
+// ─────────────────────────────────────────────────────────────────────────────
+function InstallCTA() {
+  const { ref, visible } = useReveal()
+
+  return (
+    <section
+      id="install"
+      className="py-28 px-5 bg-yellow border-t-[3px] border-b-[3px] border-ink text-center"
+      ref={ref}
+    >
+      <div className={`max-w-[700px] mx-auto reveal ${visible ? 'visible' : ''}`}>
+        <div className="font-mono font-bold text-[11px] tracking-[3px] text-[#666] mb-5">
+          YOU&apos;VE SUFFERED LONG ENOUGH
+        </div>
+        <h2
+          className="font-black leading-[0.88] tracking-[-4px] mb-7"
+          style={{ fontSize: 'clamp(44px, 9vw, 88px)' }}
+        >
+          READY TO<br />SILENCE<br />THE CLACK?
+        </h2>
+        <p className="text-[#555] text-[17px] mb-12 leading-relaxed">
+          Free. Open source. No account. No telemetry. Works in thirty seconds.
+        </p>
+
+        <a
+          href="#"
+          className="neo-btn bg-ink text-cream px-12 py-5 text-[17px] tracking-wide"
+          style={{ boxShadow: '9px 9px 0 rgba(0,0,0,0.25)' }}
+        >
+          ⬇ INSTALL ON CHROME
+        </a>
+
+        <div className="flex flex-wrap gap-6 justify-center mt-10">
+          {['FREE FOREVER', 'NO ACCOUNT', 'OPEN SOURCE', 'ZERO TELEMETRY'].map(b => (
+            <div key={b} className="font-mono font-bold text-[11px] tracking-[1px] text-[#555]">
+              ✓ {b}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FOOTER
+// ─────────────────────────────────────────────────────────────────────────────
+function Footer() {
+  return (
+    <footer className="bg-ink border-t-[3px] border-ink py-10 px-5">
+      <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-yellow border-2 border-[#333] rounded-sm flex items-center justify-center font-mono font-black text-[10px] text-ink shadow-[2px_2px_0_#444]">
+            YD
+          </div>
+          <span className="text-white font-bold text-[15px]">YT DeClicker v3</span>
+          <span className="text-[#555] font-mono text-[11px] hidden sm:block">
+            • Real-time noise suppression
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-[#888] hover:text-yellow transition-colors"
+            aria-label="View source on GitHub"
+          >
+            <GitHubIcon size={16} />
+            <span className="font-mono text-[11px] font-bold tracking-wide">SOURCE</span>
+          </a>
+          <div className="font-mono text-[11px] text-[#555]">
+            MIT License • Powered by EQ + RNNoise + DeepFilterNet3
+          </div>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+export default function Home() {
+  return (
+    <main className="overflow-x-hidden">
+      <Nav />
+      <Hero />
+      <Marquee />
+      <StatsStrip />
+      <HowItWorks />
+      <Engines />
+      <Features />
+      <PrivacyCallout />
+      <InstallCTA />
+      <Footer />
+    </main>
+  )
+}
