@@ -175,6 +175,10 @@
       } catch (e) {
         console.warn("[YT DeClicker] Failed to save state:", e);
       }
+      // Sync to chrome.storage.local so popup can read state when off YouTube
+      try {
+        chrome.storage.local.set({ ytdc_active: isActive, ytdc_mode: mode, ytdc_intensity: intensity });
+      } catch (e) {}
     }, 300);
   }
 
@@ -182,6 +186,9 @@
     if (_saveTimer) clearTimeout(_saveTimer);
     try {
       localStorage.setItem(STATE_KEY, JSON.stringify({ active: isActive, mode, intensity }));
+    } catch (e) {}
+    try {
+      chrome.storage.local.set({ ytdc_active: isActive, ytdc_mode: mode, ytdc_intensity: intensity });
     } catch (e) {}
   }
 
@@ -397,6 +404,42 @@
     dfModelBytes = null;
   }
 
+  // Import DF assets that were downloaded by the popup while off YouTube.
+  // The background worker stored them as base64 in chrome.storage.local with
+  // ytdc_df_staged=true. We decode and write them to IndexedDB, then clear the flag.
+  async function importStagedAssets() {
+    try {
+      const result = await new Promise((resolve) =>
+        chrome.storage.local.get(
+          ["ytdc_df_staged", "_df3_wasm_transfer", "_df3_model_transfer"],
+          resolve
+        )
+      );
+      if (!result.ytdc_df_staged) return;
+
+      const wasmB64 = result._df3_wasm_transfer;
+      const modelB64 = result._df3_model_transfer;
+      if (!wasmB64 || !modelB64) return;
+
+      const decodeB64 = (b64) => {
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return bytes.buffer;
+      };
+
+      await cacheSet("df3_wasm", decodeB64(wasmB64));
+      await cacheSet("df3_model", decodeB64(modelB64));
+      await cacheSet(ASSET_VERSION_KEY, CURRENT_ASSET_VERSION);
+      dfAssetsDownloaded = true;
+
+      // Clear staged flag and transfer data from storage
+      chrome.storage.local.remove(["ytdc_df_staged", "_df3_wasm_transfer", "_df3_model_transfer"]);
+    } catch (e) {
+      console.warn("[YT DeClicker] Failed to import staged assets:", e);
+    }
+  }
+
   async function loadDfAssets() {
     if (dfWasmModule && dfModelBytes) return true;
     try {
@@ -609,6 +652,9 @@
             } catch (e) {
               return { ok: false, error: e.message };
             }
+          case "importStaged":
+            await importStagedAssets();
+            return { ok: true };
           case "deleteDf":
             await deleteDfAssets();
             return { ok: true };
@@ -620,10 +666,24 @@
   }
 
   // ─── Init ───
-  loadState();
-  checkAssetVersion();
-  checkDfAssetsDownloaded().then(d => { dfAssetsDownloaded = d; });
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", observe);
-  } else { observe(); }
+  loadState();          // sync read from localStorage
+  checkAssetVersion();  // async — evicts stale IndexedDB cache if version changed
+
+  // Import any DF assets staged by the popup while the user was off YouTube.
+  // Must run before checkDfAssetsDownloaded so the flag reflects the import.
+  importStagedAssets().then(() => checkDfAssetsDownloaded().then(d => { dfAssetsDownloaded = d; }));
+
+  // Merge in any state changes made by the popup while off YouTube, then start
+  // observing for a video element (deferred until the storage read completes to
+  // avoid a race where the audio chain starts with the wrong mode/intensity).
+  chrome.storage.local.get(["ytdc_active", "ytdc_mode", "ytdc_intensity"], (result) => {
+    if (!chrome.runtime.lastError) {
+      if (result.ytdc_mode !== undefined) mode = result.ytdc_mode;
+      if (result.ytdc_intensity !== undefined) intensity = result.ytdc_intensity;
+      if (result.ytdc_active !== undefined) isActive = result.ytdc_active;
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", observe);
+    } else { observe(); }
+  });
 })();

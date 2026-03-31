@@ -1,32 +1,53 @@
 // background.js — Service worker for YT DeClicker v3
-// Handles cross-origin downloads that content scripts can't make
-// due to YouTube's CSP blocking fetches to external domains.
 //
-// Uses chrome.storage.local as a binary transfer bridge:
-// 1. Service worker downloads file → stores base64 in chrome.storage.local
-// 2. Content script reads from chrome.storage.local → decodes to ArrayBuffer
-// This avoids the message-size limit of chrome.runtime.sendMessage.
-// chrome.storage.local is used (not session) because unlimitedStorage applies to it.
+// Download architecture:
+//   proxyDownload  — called by content script on YouTube (uses tab for progress)
+//   downloadDfDirect — called by popup from any page (broadcasts progress to popup)
+//
+// Settings are stored in chrome.storage.local so popup can read/write them
+// without needing a content script (i.e. even when not on YouTube).
 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.action === "proxyDownload") {
-    handleDownload(msg, sender)
-      .then(result => sendResponse(result))
-      .catch(e => sendResponse({ ok: false, error: e.message }));
-    return true; // keep channel open
-  }
-});
-
-// Only allow downloads from the trusted CDN domain
+const DF3_CDN = "https://cdn.mezon.ai/AI/models/datas/noise_suppression/deepfilternet3";
+const DF3_WASM_URL  = `${DF3_CDN}/v2/pkg/df_bg.wasm`;
+const DF3_MODEL_URL = `${DF3_CDN}/v2/models/DeepFilterNet3_onnx.tar.gz`;
 const ALLOWED_ORIGINS = ["https://cdn.mezon.ai"];
 
-async function handleDownload(msg, sender) {
-  const { url, storageKey, requestId } = msg;
-  const tabId = sender.tab?.id;
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  let promise;
 
-  // Security: validate URL against allowlist to prevent open proxy abuse
+  if (msg.action === "proxyDownload") {
+    // Original path: content script on YouTube triggers this
+    promise = handleProxyDownload(msg, sender.tab?.id);
+
+  } else if (msg.action === "downloadDfDirect") {
+    // New path: popup (any page) triggers this; progress goes to popup via broadcast
+    promise = handleDfDirectDownload();
+
+  } else if (msg.action === "deleteDfDirect") {
+    // Mark deleted + clear staged data so content script won't re-import on next load
+    promise = chrome.storage.local
+      .set({ ytdc_df_downloaded: false })
+      .then(() => chrome.storage.local.remove([
+        "_df3_wasm_transfer", "_df3_model_transfer", "ytdc_df_staged"
+      ]))
+      .then(() => ({ ok: true }));
+
+  } else {
+    return false; // not our message
+  }
+
+  promise
+    .then(result => sendResponse(result))
+    .catch(e    => sendResponse({ ok: false, error: e.message }));
+  return true; // keep channel open for async response
+});
+
+// ─── Shared download + base64-encode helper ───────────────────────────────────
+// tabId: if provided, also sends progress to the YouTube tab (for content script path)
+// progressCb: called with (pct) for each chunk received
+async function downloadToStorage(url, storageKey, tabId, progressCb) {
   const parsedUrl = new URL(url);
-  if (!ALLOWED_ORIGINS.some(origin => parsedUrl.origin === origin)) {
+  if (!ALLOWED_ORIGINS.some(o => parsedUrl.origin === o)) {
     throw new Error("URL not in allowed origins: " + parsedUrl.origin);
   }
 
@@ -35,8 +56,7 @@ async function handleDownload(msg, sender) {
   const reader = resp.body?.getReader();
 
   let bytes;
-  if (reader && contentLength > 0 && tabId) {
-    // Stream with progress
+  if (reader && contentLength > 0) {
     let received = 0;
     const chunks = [];
     while (true) {
@@ -44,42 +64,68 @@ async function handleDownload(msg, sender) {
       if (done) break;
       chunks.push(value);
       received += value.length;
-      // Send progress to content script (small messages, no binary)
-      try {
-        chrome.tabs.sendMessage(tabId, {
-          type: "downloadProgress",
-          requestId,
-          progress: Math.round((received / contentLength) * 100),
-        });
-      } catch (e) {}
+      const pct = Math.round((received / contentLength) * 100);
+      if (progressCb) progressCb(pct);
+      // Content-script path: also forward to the YouTube tab
+      if (tabId) {
+        try {
+          chrome.tabs.sendMessage(tabId, {
+            type: "downloadProgress",
+            requestId: storageKey,
+            progress: pct,
+          });
+        } catch (e) {}
+      }
     }
-    const full = new Uint8Array(received);
+    bytes = new Uint8Array(received);
     let pos = 0;
-    for (const chunk of chunks) { full.set(chunk, pos); pos += chunk.length; }
-    bytes = full;
+    for (const chunk of chunks) { bytes.set(chunk, pos); pos += chunk.length; }
   } else {
-    const buf = await resp.arrayBuffer();
-    bytes = new Uint8Array(buf);
+    bytes = new Uint8Array(await resp.arrayBuffer());
   }
 
-  // Convert to base64 for transfer via session storage
-  // Process in 32KB chunks to avoid call stack overflow on btoa
-  const CHUNK_SIZE = 32768;
-  let b64 = "";
-  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
-    const slice = bytes.subarray(i, Math.min(i + CHUNK_SIZE, bytes.length));
-    b64 += String.fromCharCode.apply(null, slice);
+  // Base64-encode in 32 KB slices to avoid call-stack overflow
+  const CHUNK = 32768;
+  let b64str = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    b64str += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
   }
-  const base64 = btoa(b64);
-
-  // Store in chrome.storage.local (unlimitedStorage permission removes quota)
-  // Using local instead of session because session has a 10MB quota that
-  // can't be expanded, and our files are >10MB base64-encoded.
-  await chrome.storage.local.set({ [storageKey]: base64 });
-
+  await chrome.storage.local.set({ [storageKey]: btoa(b64str) });
   return { ok: true, storageKey, size: bytes.length };
 }
 
+// ─── Original proxy-download path (content script → background) ──────────────
+async function handleProxyDownload(msg, tabId) {
+  const { url, storageKey, requestId } = msg;
+  return downloadToStorage(url, storageKey, tabId, null);
+}
+
+// ─── Direct download path (popup → background) ───────────────────────────────
+async function handleDfDirectDownload() {
+  // WASM file — progress 0–30% in popup bar
+  await downloadToStorage(DF3_WASM_URL, "_df3_wasm_transfer", null, (pct) => {
+    broadcastToPopup({ type: "dfProgress", stage: "wasm", progress: pct });
+  });
+
+  // Model file — progress 30–100% in popup bar
+  await downloadToStorage(DF3_MODEL_URL, "_df3_model_transfer", null, (pct) => {
+    broadcastToPopup({ type: "dfProgress", stage: "model", progress: pct });
+  });
+
+  // Mark as staged so content script imports to IndexedDB on next YouTube load
+  await chrome.storage.local.set({
+    ytdc_df_downloaded: true,
+    ytdc_df_staged: true,
+  });
+
+  return { ok: true };
+}
+
+function broadcastToPopup(msg) {
+  try { chrome.runtime.sendMessage(msg).catch(() => {}); } catch (e) {}
+}
+
+// ─── Fetch with exponential-backoff retry ─────────────────────────────────────
 async function fetchWithRetry(url, retries) {
   let lastError;
   for (let attempt = 0; attempt < retries; attempt++) {
