@@ -61,7 +61,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  width: 340px;
+  width: 360px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   background: var(--bg);
   color: var(--fg);
@@ -241,15 +241,16 @@ body {
   text-transform: uppercase;
 }
 
-/* ─── Engine Cards ─── */
+/* ─── Engine Cards — Vertical Stack ─── */
 .engine-grid {
   display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
 .engine-card {
-  flex: 1;
-  padding: 10px 8px 8px;
+  width: 100%;
+  padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--card-bg);
@@ -263,15 +264,12 @@ body {
 .engine-card:hover {
   box-shadow: var(--shadow-md);
   border-color: var(--border-strong);
-  background: var(--hover-bg);
 }
-.engine-card:active {
-  transform: scale(0.97);
-}
+.engine-card:active { transform: scale(0.99); }
 .engine-card.active {
   background: var(--accent-soft);
   border-color: var(--accent);
-  color: var(--fg);
+  border-width: 1.5px;
 }
 .engine-card.active[data-mode="ml"] {
   background: var(--ml-soft);
@@ -282,47 +280,50 @@ body {
   border-color: var(--deep-accent);
 }
 
+/* top row: name + tag left, best-for right */
+.engine-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.engine-identity {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
 .engine-name {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
   line-height: 1;
 }
-
 .engine-tag {
   display: inline-block;
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.8px;
   padding: 2px 6px;
-  margin-top: 5px;
   border-radius: 4px;
   background: var(--accent-soft);
   color: #22c55e;
-}
-.engine-card.active .engine-tag {
-  background: rgba(255,255,255,0.2);
-}
-.tag-ml {
-  background: var(--ml-soft);
-  color: var(--ml-accent);
-}
-.tag-deep {
-  background: var(--deep-soft);
-  color: var(--deep-accent);
-}
-
-.engine-desc {
-  font-size: 10px;
-  margin-top: 6px;
   line-height: 1.4;
+}
+.tag-ml   { background: var(--ml-soft);   color: var(--ml-accent);   }
+.tag-deep { background: var(--deep-soft); color: var(--deep-accent); }
+.engine-best-for {
+  font-size: 10px;
   color: var(--fg2);
+  font-style: italic;
 }
-.engine-card.active .engine-desc {
-  color: var(--fg);
-  opacity: 0.8;
+.engine-desc {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--fg2);
+  margin-bottom: 9px;
 }
+.engine-card.active .engine-desc { color: var(--fg); opacity: 0.85; }
 
 /* ─── DeepFilter Panel ─── */
 .df-panel {
@@ -490,30 +491,29 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 /* ─── Engine Stat Bars ─── */
 .engine-stats {
-  margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .stat-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 108px 1fr 36px;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
-.stat-emoji {
-  font-size: 9px;
-  width: 12px;
-  text-align: center;
-  flex-shrink: 0;
-  line-height: 1;
+.stat-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--fg2);
+  white-space: nowrap;
 }
+.engine-card.active .stat-label { color: var(--fg); opacity: 0.8; }
 
 .stat-track {
-  flex: 1;
-  height: 5px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 3px;
   background: var(--range-track);
   overflow: hidden;
 }
@@ -521,10 +521,20 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .stat-fill {
   height: 100%;
   width: 0%;
-  border-radius: 2px;
+  border-radius: 3px;
   background: var(--bar, var(--accent));
-  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 0.65s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+.stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--fg2);
+  text-align: right;
+  white-space: nowrap;
+}
+.engine-card.active .stat-val { color: var(--fg); }
 
 /* Trigger animation by adding .bars-ready to the grid */
 .engine-grid.bars-ready .stat-fill {
