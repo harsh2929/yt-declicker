@@ -4,6 +4,29 @@ import React, { useEffect, useRef, useState } from 'react'
 
 const GITHUB_URL = 'https://github.com/harsh2929/yt-declicker'
 
+// Words that cycle in the hero headline
+const TYPING_WORDS = ['CLACK', 'CLICK', 'TIP TAP', 'THUD', 'CLATTER', 'RAT-TAT', 'TAP TAP', 'TICK TACK']
+
+// Keyboard rows for the animated keyboard visual
+const KEY_ROWS = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['Z','X','C','V','B','N','M'],
+]
+
+// Noise types for the feature request form
+const NOISE_TYPES = [
+  { id: 'mouse',    label: 'Mouse clicks',        emoji: '🖱' },
+  { id: 'fan',      label: 'Fan / AC noise',       emoji: '💨' },
+  { id: 'music',    label: 'Background music',     emoji: '🎵' },
+  { id: 'echo',     label: 'Echo / reverb',        emoji: '🔊' },
+  { id: 'crowd',    label: 'Crowd noise',          emoji: '👥' },
+  { id: 'rain',     label: 'Rain / weather',       emoji: '🌧' },
+  { id: 'dog',      label: 'Dog barking',          emoji: '🐕' },
+  { id: 'hum',      label: 'Electrical hum',       emoji: '⚡' },
+  { id: 'other',    label: 'Other',                emoji: '🔇' },
+]
+
 function GitHubIcon({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -60,6 +83,114 @@ function useReveal() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DYNAMIC WORD — cycles through keyboard sound words
+// ─────────────────────────────────────────────────────────────────────────────
+function DynamicWord() {
+  const [idx, setIdx] = useState(0)
+  const [leaving, setLeaving] = useState(false)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setLeaving(true)
+      setTimeout(() => {
+        setIdx(i => (i + 1) % TYPING_WORDS.length)
+        setLeaving(false)
+      }, 220)
+    }, 1700)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        transition: 'transform 0.22s cubic-bezier(0.4,0,0.2,1), opacity 0.22s ease',
+        transform: leaving ? 'translateY(-40px) scaleY(0.6)' : 'translateY(0) scaleY(1)',
+        opacity: leaving ? 0 : 1,
+        minWidth: '7ch',
+        textAlign: 'center',
+      }}
+    >
+      {TYPING_WORDS[idx]}
+    </span>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KEYBOARD VISUAL — animated keys that randomly "press"
+// ─────────────────────────────────────────────────────────────────────────────
+function KeyboardVisual() {
+  const [pressed, setPressed] = useState<Set<string>>(new Set())
+  const [justFiltered, setJustFiltered] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    let alive = true
+
+    const pressKey = () => {
+      if (!alive) return
+      const row = KEY_ROWS[Math.floor(Math.random() * KEY_ROWS.length)]
+      const key = row[Math.floor(Math.random() * row.length)]
+
+      // Key turns red (noise) for 120ms then green (filtered) briefly
+      setPressed(p => new Set([...p, key]))
+      setTimeout(() => {
+        setPressed(p => { const n = new Set(p); n.delete(key); return n })
+        setJustFiltered(p => new Set([...p, key]))
+        setTimeout(() => {
+          setJustFiltered(p => { const n = new Set(p); n.delete(key); return n })
+        }, 280)
+      }, 120)
+
+      // Schedule next key(s) — typing bursts
+      const nextDelay = Math.random() < 0.5 ? 80 + Math.random() * 80 : 400 + Math.random() * 800
+      setTimeout(pressKey, nextDelay)
+    }
+
+    const t = setTimeout(pressKey, 600)
+    return () => { alive = false; clearTimeout(t) }
+  }, [])
+
+  return (
+    <div className="flex flex-col items-center gap-1.5 select-none" aria-hidden>
+      {KEY_ROWS.map((row, ri) => (
+        <div key={ri} className="flex gap-1.5" style={{ paddingLeft: `${ri * 10}px` }}>
+          {row.map(key => {
+            const isPressed  = pressed.has(key)
+            const isFiltered = justFiltered.has(key)
+            return (
+              <div
+                key={key}
+                className="font-mono font-black text-[11px] flex items-center justify-center border-2 border-ink rounded-sm"
+                style={{
+                  width: 30, height: 30,
+                  backgroundColor: isPressed ? '#FF3B30' : isFiltered ? '#30D158' : '#FAF6EC',
+                  color:           isPressed ? '#fff'    : isFiltered ? '#fff'    : '#111',
+                  transform:       isPressed ? 'translateY(2px)' : 'translateY(0)',
+                  boxShadow:       isPressed ? '0 0 0 #111' : '0 2px 0 #111',
+                  transition:      'all 0.06s ease',
+                }}
+              >
+                {key}
+              </div>
+            )
+          })}
+        </div>
+      ))}
+      {/* Space bar */}
+      <div
+        className="border-2 border-ink rounded-sm font-mono font-black text-[9px] flex items-center justify-center"
+        style={{ width: 160, height: 24, backgroundColor: '#FAF6EC', boxShadow: '0 2px 0 #111' }}
+      >
+        SPACE
+      </div>
+      <div className="font-mono text-[10px] text-[#aaa] mt-1 tracking-widest">
+        EVERY KEY PRESS = A NOISE TO FILTER
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // NAV
 // ─────────────────────────────────────────────────────────────────────────────
 function Nav() {
@@ -88,8 +219,9 @@ function Nav() {
 
         {/* Links */}
         <div className="hidden sm:flex items-center gap-5">
-          <a href="#engines" className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">ENGINES</a>
+          <a href="#engines"  className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">ENGINES</a>
           <a href="#features" className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">FEATURES</a>
+          <a href="/roadmap"  className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">ROADMAP</a>
           <a
             href={GITHUB_URL}
             target="_blank"
@@ -183,24 +315,34 @@ function Hero() {
           style={{ fontSize: 'clamp(56px, 11vw, 118px)' }}
         >
           <div>SILENCE</div>
-          <div className="mt-2">
+          <div className="mt-2" style={{ overflow: 'hidden' }}>
             <span
               className="inline-block bg-yellow border-[3px] border-ink px-3 glitch-text"
               data-text="THE CLACK"
               style={{ boxShadow: '7px 7px 0 #111' }}
             >
-              THE CLACK
+              THE <DynamicWord />
             </span>
           </div>
         </h1>
 
-        <p className="mt-8 mb-10 text-[#444] max-w-[540px] mx-auto leading-relaxed font-medium"
+        <p className="mt-8 mb-8 text-[#444] max-w-[540px] mx-auto leading-relaxed font-medium"
           style={{ fontSize: 'clamp(15px, 1.8vw, 19px)' }}
         >
           YT DeClicker removes keyboard clicks from YouTube in real-time —
           straight in your browser. Three engines, zero latency compromise.
           Your ears deserve better.
         </p>
+
+        {/* Keyboard visual */}
+        <div className="mb-10 flex justify-center">
+          <div className="neo-card p-6 bg-[#FFF9E0] inline-block">
+            <div className="font-mono font-black text-[10px] tracking-[2px] text-[#888] mb-4 text-center">
+              WATCH THE KEYS — RED = NOISE DETECTED → GREEN = FILTERED
+            </div>
+            <KeyboardVisual />
+          </div>
+        </div>
 
         {/* CTAs */}
         <div className="flex flex-wrap gap-4 justify-center mb-14">
@@ -613,6 +755,97 @@ function InstallCTA() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// FEATURE REQUEST
+// ─────────────────────────────────────────────────────────────────────────────
+function FeatureRequest() {
+  const { ref, visible } = useReveal()
+  const [selected, setSelected] = useState<string | null>(null)
+  const [sent, setSent] = useState(false)
+
+  const handleSubmit = () => {
+    if (!selected) return
+    const noise = NOISE_TYPES.find(n => n.id === selected)
+    const subject = encodeURIComponent(`YT DeClicker Feature Request: Filter "${noise?.label}"`)
+    const body = encodeURIComponent(
+      `Hi,\n\nI'd love YT DeClicker to also filter: ${noise?.emoji} ${noise?.label}\n\nSent from ytdeclicker.com`
+    )
+    window.open(`mailto:harshkumar09104@gmail.com?subject=${subject}&body=${body}`)
+    setSent(true)
+    setTimeout(() => setSent(false), 4000)
+  }
+
+  return (
+    <section id="feature-request" className="py-24 px-5 bg-ink" ref={ref}>
+      <div className="max-w-3xl mx-auto">
+        <div className={`reveal ${visible ? 'visible' : ''}`}>
+          <div className="text-center mb-12">
+            <div className="font-mono font-black text-[11px] tracking-[3px] text-[#666] mb-4">
+              WHAT&apos;S NEXT?
+            </div>
+            <h2
+              className="font-black leading-none tracking-[-3px] text-white mb-4"
+              style={{ fontSize: 'clamp(36px, 6vw, 64px)' }}
+            >
+              SILENCE SOMETHING<br />
+              <span className="text-yellow">ELSE?</span>
+            </h2>
+            <p className="text-[#888] text-[15px] max-w-md mx-auto leading-relaxed">
+              Pick the noise that&apos;s ruining your YouTube experience.
+              One tap — we&apos;ll hear you.
+            </p>
+          </div>
+
+          {/* Noise type grid */}
+          <div className="grid grid-cols-3 sm:grid-cols-3 gap-3 mb-8">
+            {NOISE_TYPES.map(n => (
+              <button
+                key={n.id}
+                onClick={() => setSelected(s => s === n.id ? null : n.id)}
+                className="border-[3px] border-[#333] p-4 text-left transition-all duration-100 cursor-pointer"
+                style={{
+                  background:  selected === n.id ? '#FFE500' : '#1a1a1a',
+                  color:       selected === n.id ? '#111'    : '#ccc',
+                  borderColor: selected === n.id ? '#FFE500' : '#333',
+                  boxShadow:   selected === n.id ? '4px 4px 0 #FFE500' : '4px 4px 0 #333',
+                  transform:   selected === n.id ? 'translate(-2px,-2px)' : 'none',
+                }}
+              >
+                <div className="text-2xl mb-2">{n.emoji}</div>
+                <div className="font-mono font-black text-[11px] tracking-[1px]">{n.label.toUpperCase()}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* Submit */}
+          <div className="flex justify-center">
+            <button
+              onClick={handleSubmit}
+              disabled={!selected}
+              className="neo-btn px-10 py-4 text-[14px] tracking-wide font-mono font-black"
+              style={{
+                background:  selected ? '#FFE500' : '#333',
+                color:       selected ? '#111'    : '#555',
+                borderColor: selected ? '#111'    : '#444',
+                boxShadow:   selected ? '5px 5px 0 #111' : '5px 5px 0 #444',
+                cursor:      selected ? 'pointer' : 'not-allowed',
+                opacity:     selected ? 1 : 0.6,
+                transition:  'all 0.1s ease',
+              }}
+            >
+              {sent ? '✓ REQUEST SENT — THANKS!' : '→ REQUEST THIS FEATURE'}
+            </button>
+          </div>
+
+          <p className="text-center font-mono text-[11px] text-[#555] mt-5">
+            Opens your email client pre-filled and ready to send.
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FOOTER
 // ─────────────────────────────────────────────────────────────────────────────
 function Footer() {
@@ -664,6 +897,7 @@ export default function Home() {
       <Features />
       <PrivacyCallout />
       <InstallCTA />
+      <FeatureRequest />
       <Footer />
     </main>
   )
