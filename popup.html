@@ -38,16 +38,34 @@
         <div class="engine-name">EQ</div>
         <div class="engine-tag">LITE</div>
         <div class="engine-desc">Notch filters + compressor. Zero latency.</div>
+        <div class="engine-stats">
+          <div class="stat-row" title="Reaction Speed"><span class="stat-emoji">&#9889;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--accent);--target:100%"></div></div></div>
+          <div class="stat-row" title="Noise Removal"> <span class="stat-emoji">&#127919;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--accent);--target:68%"></div></div></div>
+          <div class="stat-row" title="Battery Use">   <span class="stat-emoji">&#128267;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--accent);--target:96%"></div></div></div>
+          <div class="stat-row" title="Setup Effort">  <span class="stat-emoji">&#128230;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--accent);--target:100%"></div></div></div>
+        </div>
       </button>
       <button class="engine-card" data-mode="ml">
         <div class="engine-name">RNNoise</div>
         <div class="engine-tag tag-ml">ML</div>
         <div class="engine-desc">Mozilla neural net. Kills all BG noise.</div>
+        <div class="engine-stats">
+          <div class="stat-row" title="Reaction Speed"><span class="stat-emoji">&#9889;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--ml-accent);--target:88%"></div></div></div>
+          <div class="stat-row" title="Noise Removal"> <span class="stat-emoji">&#127919;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--ml-accent);--target:84%"></div></div></div>
+          <div class="stat-row" title="Battery Use">   <span class="stat-emoji">&#128267;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--ml-accent);--target:74%"></div></div></div>
+          <div class="stat-row" title="Setup Effort">  <span class="stat-emoji">&#128230;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--ml-accent);--target:95%"></div></div></div>
+        </div>
       </button>
       <button class="engine-card" data-mode="deep">
         <div class="engine-name">DeepFilter</div>
         <div class="engine-tag tag-deep">DL</div>
         <div class="engine-desc">DeepFilterNet3. State of the art.</div>
+        <div class="engine-stats">
+          <div class="stat-row" title="Reaction Speed"><span class="stat-emoji">&#9889;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--deep-accent);--target:72%"></div></div></div>
+          <div class="stat-row" title="Noise Removal"> <span class="stat-emoji">&#127919;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--deep-accent);--target:100%"></div></div></div>
+          <div class="stat-row" title="Battery Use">   <span class="stat-emoji">&#128267;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--deep-accent);--target:50%"></div></div></div>
+          <div class="stat-row" title="Setup Effort">  <span class="stat-emoji">&#128230;</span><div class="stat-track"><div class="stat-fill" style="--bar:var(--deep-accent);--target:65%"></div></div></div>
+        </div>
       </button>
     </div>
   </div>
@@ -86,8 +104,9 @@
     </div>
   </div>
 
-  <footer class="footer" id="infoText">
-    Targets 1&ndash;6 kHz click transients. Voice stays clean.
+  <footer class="footer">
+    <div id="infoText">Targets 1&ndash;6 kHz click transients. Voice stays clean.</div>
+    <button class="bug-report-btn" id="bugReportBtn">&#128027; Report a bug</button>
   </footer>
 
 </div>

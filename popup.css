@@ -488,6 +488,49 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border-color: var(--accent);
 }
 
+/* ─── Engine Stat Bars ─── */
+.engine-stats {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-emoji {
+  font-size: 9px;
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.stat-track {
+  flex: 1;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--range-track);
+  overflow: hidden;
+}
+
+.stat-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  background: var(--bar, var(--accent));
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Trigger animation by adding .bars-ready to the grid */
+.engine-grid.bars-ready .stat-fill {
+  width: var(--target, 0%);
+}
+
 /* ─── Footer ─── */
 .footer {
   font-size: 11px;
@@ -496,6 +539,32 @@ input[type="range"]::-webkit-slider-thumb:hover {
   padding-top: 12px;
   border-top: 1px solid var(--border);
   letter-spacing: 0.2px;
+}
+
+.bug-report-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--fg2);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+.bug-report-btn:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.bug-report-btn:active {
+  transform: scale(0.97);
 }
 
 /* ─── Animations ─── */

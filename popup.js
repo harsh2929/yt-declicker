@@ -20,6 +20,8 @@ const eqPresets = $("eqPresets");
 const presetBtns = document.querySelectorAll(".btn-preset");
 const infoText = $("infoText");
 const themeToggle = $("themeToggle");
+const engineGrid = document.querySelector(".engine-grid");
+const bugReportBtn = $("bugReportBtn");
 
 let currentMode = "eq";
 let dfDownloaded = false;
@@ -205,6 +207,9 @@ refreshState();
 // Retry once after a short delay in case content script is still initializing
 setTimeout(() => { if (!connected) refreshState(); }, 800);
 
+// Trigger stat bar fill animation shortly after popup opens
+setTimeout(() => { engineGrid.classList.add("bars-ready"); }, 80);
+
 // ─── Inject Button ───
 $("injectBtn").addEventListener("click", injectAndRetry);
 
@@ -318,4 +323,22 @@ presetBtns.forEach((btn) => {
     presetBtns.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
   });
+});
+
+// ─── Bug Report ───
+bugReportBtn.addEventListener("click", () => {
+  const engineNames = { eq: "EQ Lite", ml: "RNNoise", deep: "DeepFilterNet3" };
+  const subject = encodeURIComponent("YT DeClicker v3 — Bug Report");
+  const body = encodeURIComponent(
+    "Bug Report — YT DeClicker v3\n" +
+    "─────────────────────────────\n" +
+    "Engine:    " + (engineNames[currentMode] || currentMode) + "\n" +
+    "Intensity: " + intensitySlider.value + "\n" +
+    "Browser:   " + navigator.userAgent + "\n\n" +
+    "Describe the issue:\n\n\n" +
+    "Steps to reproduce:\n1. \n2. \n3. \n\n" +
+    "Expected behaviour:\n\n" +
+    "Actual behaviour:\n"
+  );
+  window.open("mailto:harshkumar09104@gmail.com?subject=" + subject + "&body=" + body);
 });
