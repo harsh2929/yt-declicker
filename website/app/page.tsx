@@ -234,7 +234,9 @@ function Nav() {
             <span className="font-mono font-bold tracking-wide">GITHUB</span>
           </a>
           <a
-            href="#install"
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="neo-btn bg-ink text-yellow px-5 py-2 text-[13px] tracking-wide"
           >
             INSTALL FREE →
@@ -347,7 +349,7 @@ function Hero() {
 
         {/* CTAs */}
         <div className="flex flex-wrap gap-4 justify-center mb-14">
-          <a href="#install" className="neo-btn bg-ink text-cream px-8 py-4 text-[15px] tracking-wide">
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="neo-btn bg-ink text-cream px-8 py-4 text-[15px] tracking-wide">
             ⬇ INSTALL FREE
           </a>
           <a href="#engines" className="neo-btn bg-cream text-ink px-8 py-4 text-[15px] tracking-wide">
@@ -491,7 +493,7 @@ function HowItWorks() {
               >
                 {step.num}
               </div>
-              <div className="text-5xl mb-4">{step.icon}</div>
+              <div className="text-5xl mb-4" aria-hidden="true">{step.icon}</div>
               <h3 className="font-mono font-black text-[17px] tracking-[1px] mb-3">{step.title}</h3>
               <p className="text-[#444] leading-relaxed text-[14px]">{step.body}</p>
             </div>
@@ -700,7 +702,7 @@ function Features() {
               className={`neo-card neo-card-lift reveal ${visible ? 'visible' : ''} p-6`}
               style={{ background: item.bg, transitionDelay: `${i * 70}ms` }}
             >
-              <div className="text-4xl mb-4">{item.icon}</div>
+              <div className="text-4xl mb-4" aria-hidden="true">{item.icon}</div>
               <h3 className="font-mono font-black text-[12px] tracking-[1px] mb-2">{item.title}</h3>
               <p className="text-[#555] text-[13px] leading-relaxed">{item.desc}</p>
             </div>
@@ -775,7 +777,9 @@ function InstallCTA() {
         </p>
 
         <a
-          href="#"
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           className="neo-btn bg-ink text-cream px-12 py-5 text-[17px] tracking-wide"
           style={{ boxShadow: '9px 9px 0 rgba(0,0,0,0.25)' }}
         >
@@ -931,9 +935,35 @@ function Footer() {
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE
 // ─────────────────────────────────────────────────────────────────────────────
+const JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'YT DeClicker',
+  applicationCategory: 'BrowserApplication',
+  operatingSystem: 'Chrome',
+  description:
+    'Free Chrome extension that removes keyboard clicks and typing noise from YouTube videos in real-time using EQ filters, RNNoise ML, or DeepFilterNet3 AI.',
+  url: 'https://ytdeclicker.com',
+  downloadUrl: 'https://github.com/harsh2929/yt-declicker',
+  softwareVersion: '3',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  author: { '@type': 'Person', name: 'Harsh Bishnoi', url: 'https://github.com/harsh2929' },
+  featureList: [
+    'Real-time keyboard click removal',
+    'Three AI engines: EQ Lite, RNNoise, DeepFilterNet3',
+    'Works on any YouTube video',
+    'No audio sent to any server — fully local processing',
+  ],
+}
+
+// JSON_LD is a static constant with no user input — dangerouslySetInnerHTML is safe here
+// and is the standard Next.js-recommended pattern for JSON-LD structured data.
 export default function Home() {
   return (
-    <main className="overflow-x-hidden">
+    <>
+      {/* eslint-disable-next-line react/no-danger */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
+      <main className="overflow-x-hidden">
       <Nav />
       <Hero />
       <Marquee />
@@ -946,5 +976,6 @@ export default function Home() {
       <FeatureRequest />
       <Footer />
     </main>
+    </>
   )
 }
