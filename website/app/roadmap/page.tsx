@@ -155,6 +155,7 @@ export default function Roadmap() {
             <Link href="/#engines"  className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2 text-[#111]">ENGINES</Link>
             <Link href="/#features" className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2 text-[#111]">FEATURES</Link>
             <span className="font-mono font-black text-[13px] tracking-wide border-b-2 border-[#111]">ROADMAP</span>
+            <Link href="/docs"      className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2 text-[#111]">DOCS</Link>
             <a
               href={GITHUB_URL} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-2 border-[3px] border-[#111] px-3 py-2 text-[13px] font-mono font-bold"
