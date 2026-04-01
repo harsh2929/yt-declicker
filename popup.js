@@ -22,6 +22,10 @@ const infoText = $("infoText");
 const themeToggle = $("themeToggle");
 const engineGrid = document.querySelector(".engine-grid");
 const bugReportBtn = $("bugReportBtn");
+const updateBanner = $("updateBanner");
+const updateText   = $("updateText");
+const updateLink   = $("updateLink");
+const updateDismiss = $("updateDismiss");
 
 let currentMode = "eq";
 let dfDownloaded = false;
@@ -265,8 +269,45 @@ async function refreshState() {
   });
 }
 
+// ─── Update Banner ───
+function showUpdateBanner(version, url) {
+  updateText.textContent = `v${version} available`;
+  updateLink.href = url;
+  updateBanner.style.display = "flex";
+}
+
+function initUpdateBanner() {
+  // Read cached result set by background service worker
+  chrome.storage.local.get(
+    ["ytdc_update_available", "ytdc_update_version", "ytdc_update_url", "ytdc_update_dismissed"],
+    (result) => {
+      if (result.ytdc_update_available && !result.ytdc_update_dismissed) {
+        showUpdateBanner(result.ytdc_update_version, result.ytdc_update_url);
+      }
+    }
+  );
+  // Also listen for a live broadcast (if the check completes while popup is open)
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === "updateAvailable") showUpdateBanner(msg.version, msg.url);
+  });
+}
+
+updateDismiss.addEventListener("click", () => {
+  updateBanner.style.display = "none";
+  // Remember dismiss until the next new version is found
+  chrome.storage.local.set({ ytdc_update_dismissed: true });
+});
+
+// Reset dismissed flag whenever a new update_version is stored
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.ytdc_update_version) {
+    chrome.storage.local.set({ ytdc_update_dismissed: false });
+  }
+});
+
 // ─── Init ───
 loadTheme();
+initUpdateBanner();
 refreshState();
 // Retry once after a short delay in case content script is still initializing
 setTimeout(() => { if (!connected) refreshState(); }, 800);

@@ -6,7 +6,8 @@
   "permissions": ["storage", "scripting", "activeTab", "unlimitedStorage"],
   "host_permissions": [
     "*://*.youtube.com/*",
-    "*://cdn.mezon.ai/*"
+    "*://cdn.mezon.ai/*",
+    "*://api.github.com/*"
   ],
   "content_scripts": [
     {

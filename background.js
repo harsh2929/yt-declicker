@@ -7,6 +7,50 @@
 // Settings are stored in chrome.storage.local so popup can read/write them
 // without needing a content script (i.e. even when not on YouTube).
 
+const GITHUB_REPO   = "harsh2929/yt-declicker";
+const RELEASES_URL  = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+const RELEASES_PAGE = `https://github.com/${GITHUB_REPO}/releases/latest`;
+
+// ─── Update Check ─────────────────────────────────────────────────────────────
+// Runs once per browser session (on service worker startup).
+// Compares manifest version with the latest GitHub release tag.
+// Stores result in chrome.storage.local so the popup can show a banner instantly.
+chrome.runtime.onInstalled.addListener(checkForUpdate);
+checkForUpdate(); // also check on SW wake
+
+async function checkForUpdate() {
+  try {
+    const { version } = chrome.runtime.getManifest();
+    const resp = await fetch(RELEASES_URL, {
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const latest = (data.tag_name || "").replace(/^v/, "");
+    if (!latest) return;
+    const hasUpdate = compareVersions(latest, version) > 0;
+    await chrome.storage.local.set({
+      ytdc_update_available: hasUpdate,
+      ytdc_update_version:   latest,
+      ytdc_update_url:       RELEASES_PAGE,
+    });
+    if (hasUpdate) broadcastToPopup({ type: "updateAvailable", version: latest, url: RELEASES_PAGE });
+  } catch (e) {
+    // Network unavailable — silently ignore
+  }
+}
+
+// Returns >0 if a > b, <0 if a < b, 0 if equal  (semver without pre-release)
+function compareVersions(a, b) {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pa[i] || 0) - (pb[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
 const DF3_CDN = "https://cdn.mezon.ai/AI/models/datas/noise_suppression/deepfilternet3";
 const DF3_WASM_URL  = `${DF3_CDN}/v2/pkg/df_bg.wasm`;
 const DF3_MODEL_URL = `${DF3_CDN}/v2/models/DeepFilterNet3_onnx.tar.gz`;
