@@ -853,6 +853,38 @@
     });
   }
 
+  function _getChannelInfo() {
+    // YouTube renders channel info in different elements depending on page version
+    const nameEl =
+      document.querySelector("#channel-name a") ||
+      document.querySelector("ytd-channel-name a") ||
+      document.querySelector("#owner-name a") ||
+      document.querySelector("ytd-video-owner-renderer #channel-name a");
+
+    if (!nameEl) return null;
+    const name = (nameEl.textContent || "").trim();
+    if (!name) return null;
+
+    const href = nameEl.href || "";
+    // Prefer stable @handle, fall back to /channel/UCxxxxx
+    let id =
+      href.match(/\/@([^/?#]+)/)?.[1] ||
+      href.match(/\/channel\/([^/?#]+)/)?.[1] ||
+      name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase();
+
+    // Avatar: YouTube puts the channel photo in #avatar-link img
+    const iconEl =
+      document.querySelector("#avatar-link img") ||
+      document.querySelector("ytd-video-owner-renderer #avatar img") ||
+      document.querySelector("#owner #avatar img") ||
+      document.querySelector("ytd-video-owner-renderer yt-img-shadow img");
+
+    let iconUrl = iconEl?.src || "";
+    if (!iconUrl.startsWith("https://")) iconUrl = "";
+
+    return { id, name, iconUrl };
+  }
+
   function _runTitleDetection(customKeywords) {
     const title = _getVideoTitle();
     if (!title || title === "youtube") return false;
@@ -929,30 +961,51 @@
     _dismissClickyBanner();
 
     const result = await new Promise((resolve) =>
-      chrome.storage.local.get(["ytdc_autodetect", "ytdc_custom_keywords"], resolve)
+      chrome.storage.local.get(
+        ["ytdc_autodetect", "ytdc_custom_keywords", "ytdc_channel_rules"],
+        resolve
+      )
     );
-    const autodetect = result.ytdc_autodetect ?? true;
-    if (!autodetect || isActive) return;
+    const autodetect  = result.ytdc_autodetect ?? true;
+    const channelRules = result.ytdc_channel_rules || {};
+    const customKws   = (result.ytdc_custom_keywords || "")
+      .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 
-    const customKws = (result.ytdc_custom_keywords || "")
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-
-    // Wait up to 2.5 s for the YouTube SPA to populate the title
-    const tryTitle = (attempt) => {
+    // Retry loop: YouTube SPA populates channel name and title asynchronously.
+    // We check both on each tick so the channel rule fires as soon as the DOM is ready.
+    const tick = (attempt) => {
       if (_clickyDetectionDone) return;
-      const matched = _runTitleDetection(customKws);
-      if (matched) {
+
+      // ── 1. Channel rule (highest priority — overrides autodetect toggle) ──
+      const ch = _getChannelInfo();
+      if (ch && channelRules[ch.id]) {
+        const rule = channelRules[ch.id].rule;
         _clickyDetectionDone = true;
-        _showClickyBanner();
+        if (rule === "always" && !isActive) {
+          isActive = true;
+          connectActive();
+          saveStateImmediate();
+        } else if (rule === "ask") {
+          _showClickyBanner();
+        }
+        // rule === "never" → _clickyDetectionDone = true, nothing shown
         return;
       }
-      if (attempt < 5) setTimeout(() => tryTitle(attempt + 1), 500);
-      // After title attempts exhausted, fall through to audio analysis
-      // (started separately once sourceNode is ready)
+
+      // ── 2. Keyword / audio heuristic (respects autodetect toggle) ─────────
+      if (autodetect && !isActive) {
+        if (_runTitleDetection(customKws)) {
+          _clickyDetectionDone = true;
+          _showClickyBanner();
+          return;
+        }
+      }
+
+      // Retry up to 5 × 500 ms = 2.5 s while SPA finishes painting channel + title
+      if (attempt < 5) setTimeout(() => tick(attempt + 1), 500);
+      // Audio detection kicks in separately once sourceNode is ready (hookVideo → _startAudioClickDetection)
     };
-    tryTitle(0);
+    tick(0);
   }
 
   function observe() {
@@ -1060,6 +1113,8 @@
           case "deleteDf":
             await deleteDfAssets();
             return { ok: true };
+          case "getChannelInfo":
+            return _getChannelInfo();
         }
       };
       handleAsync().then(sendResponse);

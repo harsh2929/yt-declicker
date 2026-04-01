@@ -585,6 +585,183 @@ input[type="range"]::-webkit-slider-thumb:hover {
   width: var(--target, 0%);
 }
 
+/* ─── Channel rules section ─── */
+.channels-section {
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  overflow: hidden;
+}
+
+.channels-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--fg);
+  text-align: left;
+  transition: background 0.12s ease;
+}
+.channels-header:hover { background: var(--hover-bg); }
+
+.channels-caret {
+  font-size: 14px;
+  color: var(--fg2);
+  transition: transform 0.2s ease;
+  line-height: 1;
+  display: inline-block;
+}
+.channels-section.open .channels-caret { transform: rotate(90deg); }
+
+.channels-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.channels-section.open .channels-body {
+  max-height: 360px; /* enough for ~5 channels + current row */
+}
+
+/* current-channel strip */
+.ch-current-strip {
+  padding: 6px 12px 0;
+}
+.ch-current-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--fg2);
+  margin-bottom: 5px;
+}
+
+/* shared row layout */
+.ch-row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+}
+.ch-row + .ch-row { border-top: 1px solid var(--border); }
+.ch-current-row {
+  padding: 5px 12px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+/* channel avatar */
+.ch-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: #fff;
+}
+.ch-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* channel name */
+.ch-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 3-way segmented rule toggle */
+.rule-seg {
+  display: flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.rule-seg-btn {
+  padding: 3px 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  border: none;
+  background: transparent;
+  color: var(--fg2);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  white-space: nowrap;
+}
+.rule-seg-btn + .rule-seg-btn { border-left: 1px solid var(--border-strong); }
+.rule-seg-btn:hover { background: var(--hover-bg); }
+
+.rule-seg-btn.rule-always {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.rule-seg-btn.rule-ask {
+  background: rgba(251, 191, 36, 0.15);
+  color: #f59e0b;
+}
+.rule-seg-btn.rule-never {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* delete button on saved channel rows */
+.ch-delete-btn {
+  font-size: 10px;
+  color: var(--fg2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.ch-delete-btn:hover { opacity: 1; color: var(--danger); }
+
+/* saved channel list scroll */
+.ch-list-scroll {
+  max-height: 160px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.ch-list-scroll::-webkit-scrollbar { width: 4px; }
+.ch-list-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+
+/* empty state */
+.ch-empty {
+  font-size: 10px;
+  color: var(--fg2);
+  text-align: center;
+  padding: 10px 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
 /* ─── Auto-detect section ─── */
 .detect-section {
   margin-bottom: 14px;

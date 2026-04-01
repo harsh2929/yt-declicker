@@ -177,6 +177,24 @@
     </div>
   </div>
 
+  <!-- Channel rules -->
+  <div class="channels-section" id="channelsSection">
+    <button class="channels-header" id="channelsHeaderBtn" aria-expanded="false">
+      <span class="section-label">📺&nbsp; CHANNELS</span>
+      <span class="channels-caret" id="channelsCaret">›</span>
+    </button>
+    <div class="channels-body" id="channelsBody">
+      <!-- current-channel row (populated by JS when on YouTube) -->
+      <div id="chCurrentWrap" style="display:none"></div>
+      <!-- saved channel list (populated by JS) -->
+      <div id="chList"></div>
+      <p class="ch-empty" id="chEmpty" style="display:none">
+        No channels saved yet.<br>
+        Open a YouTube video to set a rule.
+      </p>
+    </div>
+  </div>
+
   <!-- Auto-detect clicky videos -->
   <div class="detect-section">
     <div class="detect-header">

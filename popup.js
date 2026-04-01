@@ -29,6 +29,12 @@ const updateDismiss = $("updateDismiss");
 const detectToggle = $("detectToggle");
 const detectKeywords = $("detectKeywords");
 const customKeywordsEl = $("customKeywords");
+const channelsSection = $("channelsSection");
+const channelsHeaderBtn = $("channelsHeaderBtn");
+const channelsBody = $("channelsBody");
+const chCurrentWrap = $("chCurrentWrap");
+const chList = $("chList");
+const chEmpty = $("chEmpty");
 
 let currentMode = "eq";
 let dfDownloaded = false;
@@ -308,6 +314,184 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 });
 
+// ─── Channel rules ───
+function _clearEl(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+function _chColor(name) {
+  const P = ["#4ade80","#60a5fa","#f472b6","#fb923c","#a78bfa","#34d399","#fbbf24","#38bdf8"];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h << 5) - h + name.charCodeAt(i);
+  return P[Math.abs(h) % P.length];
+}
+
+function _makeAvatar(name, iconUrl) {
+  const wrap = document.createElement("div");
+  wrap.className = "ch-avatar";
+  if (iconUrl) {
+    const img = document.createElement("img");
+    img.src = iconUrl;
+    img.alt = "";
+    img.addEventListener("error", () => {
+      img.remove();
+      wrap.textContent = (name[0] || "?").toUpperCase();
+      wrap.style.background = _chColor(name);
+    });
+    wrap.appendChild(img);
+  } else {
+    wrap.textContent = (name[0] || "?").toUpperCase();
+    wrap.style.background = _chColor(name);
+  }
+  return wrap;
+}
+
+function _makeRuleSeg(currentRule, onSelect) {
+  const seg = document.createElement("div");
+  seg.className = "rule-seg";
+  [
+    { r: "always", label: "ALWAYS"  },
+    { r: "ask",    label: "ASK"     },
+    { r: "never",  label: "EXCLUDE" },
+  ].forEach(({ r, label }) => {
+    const btn = document.createElement("button");
+    btn.className = "rule-seg-btn" + (r === currentRule ? " rule-" + r : "");
+    btn.textContent = label;
+    btn.dataset.rule = r;
+    btn.addEventListener("click", () => {
+      seg.querySelectorAll(".rule-seg-btn").forEach((b) => {
+        b.className = "rule-seg-btn" + (b.dataset.rule === r ? " rule-" + r : "");
+      });
+      onSelect(r);
+    });
+    seg.appendChild(btn);
+  });
+  return seg;
+}
+
+function _saveChannelRule(id, name, iconUrl, rule) {
+  chrome.storage.local.get(["ytdc_channel_rules"], (res) => {
+    const rules = res.ytdc_channel_rules || {};
+    rules[id] = { name, iconUrl, rule };
+    chrome.storage.local.set({ ytdc_channel_rules: rules }, () => renderChannelList(rules));
+  });
+}
+
+function _removeChannelRule(id) {
+  chrome.storage.local.get(["ytdc_channel_rules"], (res) => {
+    const rules = res.ytdc_channel_rules || {};
+    delete rules[id];
+    chrome.storage.local.set({ ytdc_channel_rules: rules }, () => {
+      renderChannelList(rules);
+      // Re-render current channel strip without the saved rule
+      if (_currentChInfo && _currentChInfo.id === id) {
+        renderCurrentChannel(_currentChInfo, rules);
+      }
+    });
+  });
+}
+
+let _currentChInfo = null;
+
+function _buildChRow(id, name, iconUrl, rule, extraActions) {
+  const row = document.createElement("div");
+  row.className = "ch-row";
+  row.appendChild(_makeAvatar(name, iconUrl));
+
+  const nameEl = document.createElement("span");
+  nameEl.className = "ch-name";
+  nameEl.textContent = name;
+  row.appendChild(nameEl);
+
+  const actWrap = document.createElement("div");
+  actWrap.style.cssText = "display:flex;align-items:center;gap:4px;flex-shrink:0";
+  actWrap.appendChild(
+    _makeRuleSeg(rule, (r) => _saveChannelRule(id, name, iconUrl, r))
+  );
+  if (extraActions) extraActions(actWrap, id, name, iconUrl);
+  row.appendChild(actWrap);
+  return row;
+}
+
+function renderChannelList(rules) {
+  _clearEl(chList);
+  const entries = Object.entries(rules || {});
+  if (entries.length === 0) {
+    chEmpty.style.display = "";
+    return;
+  }
+  chEmpty.style.display = "none";
+
+  const scroll = document.createElement("div");
+  scroll.className = "ch-list-scroll";
+  entries.forEach(([id, { name, iconUrl, rule }]) => {
+    scroll.appendChild(
+      _buildChRow(id, name, iconUrl, rule, (wrap, cId, cName, cIcon) => {
+        const del = document.createElement("button");
+        del.className = "ch-delete-btn";
+        del.title = "Remove rule";
+        del.textContent = "\u2715";
+        del.addEventListener("click", () => _removeChannelRule(cId));
+        wrap.appendChild(del);
+      })
+    );
+  });
+  chList.appendChild(scroll);
+}
+
+function renderCurrentChannel(info, rules) {
+  _clearEl(chCurrentWrap);
+  if (!info) { chCurrentWrap.style.display = "none"; return; }
+  chCurrentWrap.style.display = "";
+
+  const label = document.createElement("div");
+  label.className = "ch-current-label";
+  label.textContent = "Current video";
+  chCurrentWrap.appendChild(label);
+
+  const savedRule = (rules || {})[info.id]?.rule || null;
+  chCurrentWrap.appendChild(
+    _buildChRow(info.id, info.name, info.iconUrl, savedRule, savedRule
+      ? (wrap, cId, cName, cIcon) => {
+          const del = document.createElement("button");
+          del.className = "ch-delete-btn";
+          del.title = "Remove rule";
+          del.textContent = "\u2715";
+          del.addEventListener("click", () => _removeChannelRule(cId));
+          wrap.appendChild(del);
+        }
+      : null
+    )
+  );
+
+  const divider = document.createElement("div");
+  divider.style.cssText = "height:1px;background:var(--border);margin:4px 0";
+  chCurrentWrap.appendChild(divider);
+}
+
+function initChannels() {
+  const expanded = localStorage.getItem("ytdc_channels_open") !== "false";
+  if (expanded) channelsSection.classList.add("open");
+  channelsHeaderBtn.setAttribute("aria-expanded", String(expanded));
+
+  chrome.storage.local.get(["ytdc_channel_rules"], (res) => {
+    const rules = res.ytdc_channel_rules || {};
+    renderChannelList(rules);
+    sendMsg({ action: "getChannelInfo" }, (resp) => {
+      _currentChInfo = resp || null;
+      renderCurrentChannel(_currentChInfo, rules);
+      if (resp && localStorage.getItem("ytdc_channels_open") === null) {
+        channelsSection.classList.add("open");
+        channelsHeaderBtn.setAttribute("aria-expanded", "true");
+      }
+    });
+  });
+}
+
+channelsHeaderBtn.addEventListener("click", () => {
+  const isOpen = channelsSection.classList.toggle("open");
+  channelsHeaderBtn.setAttribute("aria-expanded", String(isOpen));
+  localStorage.setItem("ytdc_channels_open", String(isOpen));
+});
+
 // ─── Auto-detect ───
 function setDetectToggleUI(on) {
   detectToggle.textContent = on ? "ON" : "OFF";
@@ -343,6 +527,7 @@ customKeywordsEl.addEventListener("input", () => {
 // ─── Init ───
 loadTheme();
 initUpdateBanner();
+initChannels();
 initDetect();
 refreshState();
 // Retry once after a short delay in case content script is still initializing
