@@ -566,22 +566,104 @@
   // MED_CONF:  compound multi-word phrases that strongly imply live keyboard use.
   //            Kept intentionally conservative — no standalone "tutorial" or "class"
   //            words that describe pre-recorded screencasts (high false-positive risk).
+  // ── DETECT_KEYWORDS_HIGH ──────────────────────────────────────────────────
+  // Any single match = show banner.
+  // These are chosen so that P(keyboard sounds | keyword in title) > 90 %.
   const DETECT_KEYWORDS_HIGH = [
-    // Explicit keyboard hardware / sounds
+    // ── Explicit keyboard hardware / sounds ───────────────────────────────
     "mechanical keyboard", "clicky keyboard", "clicky keys", "keyboard sounds",
     "keyboard noise", "keyboard asmr", "typing asmr", "keyboard typing",
     "keyboard test", "keyboard review", "keyboard unboxing", "keycaps review",
     "keycaps unboxing", "key clicks", "key clacks", "switch sounds",
     "clicky switches", "tactile switches", "linear switches",
-    "cherry mx", "gateron switches", "holy pandas", "topre switches",
+    "cherry mx", "gateron", "holy pandas", "topre", "zealios", "boba u4",
     "membrane vs mechanical", "switch comparison", "switch test",
     "typewriter sounds", "typewriter asmr",
+
+    // ── Competitive-programming / problem-solving platforms ───────────────
+    // Video title contains the platform name = someone solving problems live
+    // = typing code the entire time. P ≈ 97 %.
+    "leetcode", "codeforces", "atcoder", "hackerrank", "codechef",
+    "spoj", "topcoder", "kattis", "advent of code",
+    "competitive programming", "competitive coding",
+    "100 days of code", "30 days of code", "100 days of leetcode",
+    "daily leetcode", "daily coding problem", "daily algorithm",
+    "blind 75", "grind 75", "neetcode 150",
+
+    // ── Keyboard-heavy editor tutorials ───────────────────────────────────
+    // Vim/Neovim tutorials demonstrate keyboard shortcuts throughout.
+    // Every action is a key sequence. P ≈ 99 %.
+    "vim tutorial", "vim setup", "vim config", "vim tips", "vim motions",
+    "vim keybindings", "vim plugin", "vim workflow", "vimrc",
+    "neovim", "nvim",          // any neovim video = keyboard focus
+    "emacs tutorial", "emacs setup", "emacs config", "emacs lisp",
+    "helix editor", "kakoune",
+
+    // ── Terminal / CLI / shell content ────────────────────────────────────
+    // Person is typing commands throughout — no mouse alternative.
+    "bash scripting", "bash script", "bash tutorial", "bash programming",
+    "shell scripting", "shell script", "shell programming",
+    "zsh config", "zsh setup", "zsh tutorial", "zsh plugins",
+    "fish shell tutorial", "fish shell config",
+    "linux commands", "linux terminal", "linux command line", "linux cli",
+    "command line tutorial", "command line tools", "cli tutorial",
+    "terminal tutorial", "terminal commands", "terminal workflow",
+    "tmux tutorial", "tmux config", "tmux setup", "tmux workflow",
+    "awk tutorial", "sed tutorial", "grep tutorial",
+    "ssh tutorial", "ssh config", "rsync tutorial",
+    "cron job", "cron tutorial",
+
+    // ── Live coding interviews ─────────────────────────────────────────────
+    // Format requires typing a solution while explaining. P ≈ 98 %.
+    "coding interview", "mock coding interview", "live coding interview",
+    "technical interview coding", "whiteboard coding",
+    "faang interview code", "faang coding", "interview prep code",
+    "system design code", "coding assessment",
+
+    // ── DSA implementations (explicit "implement / code / write" signal) ───
+    // These title patterns guarantee the person is writing the data structure
+    // or algorithm from scratch, not just explaining with slides/animations.
+    "implement binary search", "implement linked list", "implement binary tree",
+    "implement bst", "implement avl", "implement red black tree",
+    "implement stack", "implement queue", "implement deque",
+    "implement heap", "implement priority queue",
+    "implement hash map", "implement hash table", "implement hash set",
+    "implement trie", "implement graph", "implement lru cache",
+    "implement segment tree", "implement fenwick", "implement disjoint set",
+    "code binary search", "code linked list", "code binary tree",
+    "code bst", "code heap", "code trie", "code graph",
+    "coding binary search", "coding linked list", "coding binary tree",
+    "write binary search", "write linked list",
+    "sorting algorithm code", "sort in python", "sort in java",
+    "sort in c++", "sort in javascript", "sort in go",
+    "dsa in python", "dsa in java", "dsa in c++",
+    "dsa in javascript", "dsa in go", "dsa in rust",
+    "dsa in kotlin", "dsa in swift", "dsa in typescript",
+    "data structures in python", "data structures in java",
+    "data structures in c++", "data structures in javascript",
+    "algorithms in python", "algorithms in java",
+    "algorithms in c++", "algorithms in javascript",
+    "dynamic programming solution", "dp solution", "dp code",
+    "greedy solution", "backtracking solution",
   ];
+
+  // ── DETECT_KEYWORDS_MED ──────────────────────────────────────────────────
+  // Any single match = show banner.
+  // Multi-word compound phrases that strongly imply live keyboard use but
+  // are slightly less certain than HIGH tier (P ≈ 70–90 %).
+  // Intentionally excludes standalone generic words like "tutorial",
+  // "class", or "course" — those describe format, not keyboard presence.
   const DETECT_KEYWORDS_MED = [
-    // Live / real-time coding (person is actively typing on camera)
+    // ── Generic live-coding patterns ──────────────────────────────────────
     "live coding", "coding live", "code with me", "coding with me",
     "coding session", "coding stream", "programming live", "programming with me",
     "pair programming", "mob programming", "building in public",
+    "live hackathon", "hackathon coding", "24 hour build", "48 hour build",
+    "live hackathon", "coding challenge live",
+
+    // ── Language × live-coding compounds ─────────────────────────────────
+    // "react tutorial" alone → 60 % (too many pre-recorded screencasts)
+    // "react live coding" → 97 % → included here, or move to HIGH
     "react live coding", "react coding session", "react live stream", "react live",
     "vue live coding", "vue live stream", "angular live coding", "angular live",
     "typescript live", "javascript live coding", "js live coding",
@@ -593,18 +675,88 @@
     "flutter live coding", "react native live coding",
     "backend live coding", "frontend live coding", "full stack live coding",
     "web dev live", "devlog", "dev vlog", "coding vlog",
-    "live hackathon", "hackathon coding", "24 hour build", "48 hour build",
-    // Study / work-with-me (ambient keyboard noise almost guaranteed)
-    "study with me", "work with me", "pomodoro session",
-    "deep work session", "coding day",
+
+    // ── DSA topics — P(keyboard | topic title) is high for CS content ─────
+    // DSA instructors almost universally code live rather than using slides.
+    // A "binary search tutorial" = instructor opens IDE and types code.
+    "dsa tutorial", "dsa course", "dsa lecture", "dsa full course",
+    "dsa for beginners", "dsa problem", "dsa series",
+    "data structures tutorial", "data structures course", "data structures lecture",
+    "data structures and algorithms", "algorithms and data structures",
+    "algorithms tutorial", "algorithms course", "algorithms lecture",
+    "algorithm visualized", "algorithm explained with code",
+    // Dynamic programming (almost always coded live)
+    "dynamic programming tutorial", "dynamic programming problem",
+    "dynamic programming course", "dp tutorial", "dp problem", "dp series",
+    "memoization tutorial", "tabulation tutorial",
+    // Graph algorithms (complex enough that instructor types to explain)
+    "graph algorithm", "graph traversal", "bfs dfs", "breadth first search code",
+    "depth first search code", "dijkstra code", "bellman ford code",
+    "floyd warshall code", "topological sort code", "shortest path code",
+    "minimum spanning tree code", "kruskal code", "prim code",
+    // Tree topics
+    "binary search tutorial", "binary search problem",
+    "linked list tutorial", "linked list problem",
+    "binary tree tutorial", "binary tree problem",
+    "bst tutorial", "heap tutorial", "trie tutorial",
+    "segment tree tutorial", "fenwick tree tutorial", "bit tutorial",
+    "union find tutorial", "disjoint set tutorial",
+    // Misc DSA
+    "recursion tutorial", "backtracking tutorial", "backtracking problem",
+    "greedy algorithm tutorial", "greedy problem",
+    "divide and conquer tutorial", "two pointer tutorial",
+    "sliding window tutorial", "prefix sum tutorial",
+    "bit manipulation tutorial", "bitwise tutorial",
+    "string algorithm", "pattern matching algorithm",
+    "time complexity tutorial", "space complexity tutorial",
+    "big o notation code",
+
+    // ── Competitive programming topics ────────────────────────────────────
+    "cp tutorial", "competitive programming tutorial",
+    "icpc preparation", "olympiad programming", "programming contest",
+    "contest solution", "editorial solution", "editorial code",
+
+    // ── Study / work-with-me sessions ─────────────────────────────────────
+    "study with me", "work with me", "code with me",
+    "pomodoro session", "deep work session", "coding day",
+    "coding night", "coding late night", "overnight coding",
     "day in the life developer", "day in the life programmer",
     "day in the life software engineer", "developer day in the life",
     "software engineer day", "programmer day",
-    // Desk / setup tours (keyboard usually featured prominently)
+    "freelance developer day", "indie dev vlog",
+
+    // ── Setup / desk content ──────────────────────────────────────────────
     "desk setup", "battlestation", "battle station",
     "workstation setup", "home office setup", "setup tour", "workspace tour",
-    // ASMR coding content
+    "coding setup", "developer setup", "programmer setup",
+
+    // ── ASMR coding ───────────────────────────────────────────────────────
     "asmr coding", "coding asmr", "programming asmr", "developer asmr",
+
+    // ── Framework / language project tutorials ────────────────────────────
+    // These are predominantly live-coded; instructor types while explaining.
+    "django tutorial", "flask tutorial", "fastapi tutorial",
+    "spring boot tutorial", "express tutorial", "nestjs tutorial",
+    "laravel tutorial", "rails tutorial", "ruby on rails tutorial",
+    "crud tutorial", "crud application tutorial",
+    "rest api tutorial", "graphql tutorial", "trpc tutorial",
+    "sql tutorial", "postgresql tutorial", "mysql tutorial",
+    "mongodb tutorial", "redis tutorial", "prisma tutorial",
+    "full stack tutorial", "full stack project",
+    "todo app tutorial", "todo list tutorial",   // classic beginner projects
+
+    // ── DevOps / infrastructure (terminal heavy throughout) ───────────────
+    "docker tutorial", "docker compose tutorial",
+    "kubernetes tutorial", "k8s tutorial",
+    "ansible tutorial", "terraform tutorial",
+    "github actions tutorial", "gitlab ci tutorial", "ci cd tutorial",
+    "aws cli", "gcloud tutorial", "azure cli",
+    "linux administration", "linux sysadmin",
+    "nginx tutorial", "apache tutorial",
+
+    // ── Coding challenges / hackathons ────────────────────────────────────
+    "coding challenge", "daily coding challenge",
+    "coding problem", "algorithm problem",
   ];
 
   let _clickyBanner = null;
