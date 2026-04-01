@@ -221,8 +221,9 @@ function Nav() {
         <div className="hidden sm:flex items-center gap-5">
           <a href="#engines"  className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">ENGINES</a>
           <a href="#features" className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">FEATURES</a>
-          <a href="/roadmap"  className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">ROADMAP</a>
-          <a href="/docs"     className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">DOCS</a>
+          <a href="/roadmap"   className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">ROADMAP</a>
+          <a href="/changelog" className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">CHANGELOG</a>
+          <a href="/docs"      className="font-mono font-bold text-[13px] tracking-wide hover:underline underline-offset-2">DOCS</a>
           <a
             href={GITHUB_URL}
             target="_blank"
@@ -912,6 +913,9 @@ function Footer() {
           </a>
           <a href="/roadmap" className="font-mono text-[11px] font-bold tracking-wide text-[#888] hover:text-yellow transition-colors">
             ROADMAP
+          </a>
+          <a href="/changelog" className="font-mono text-[11px] font-bold tracking-wide text-[#888] hover:text-yellow transition-colors">
+            CHANGELOG
           </a>
           <a
             href={GITHUB_URL}
