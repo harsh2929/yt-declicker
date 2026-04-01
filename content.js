@@ -539,7 +539,12 @@
     }
     sourceNode = video._ytdeclicker_source;
     if (isActive) connectActive();
-    else connectBypass();
+    else {
+      connectBypass();
+      // Kick off audio-based click detection (runs only when not already active
+      // and title heuristic didn't fire — sourceNode is now available).
+      _startAudioClickDetection();
+    }
   }
 
   function findAndHook() {
@@ -556,6 +561,248 @@
     return false;
   }
 
+  // ─── Clicky Video Detection ───
+  // HIGH_CONF: a single match is enough to show the banner.
+  // MED_CONF:  compound multi-word phrases that strongly imply live keyboard use.
+  //            Kept intentionally conservative — no standalone "tutorial" or "class"
+  //            words that describe pre-recorded screencasts (high false-positive risk).
+  const DETECT_KEYWORDS_HIGH = [
+    // Explicit keyboard hardware / sounds
+    "mechanical keyboard", "clicky keyboard", "clicky keys", "keyboard sounds",
+    "keyboard noise", "keyboard asmr", "typing asmr", "keyboard typing",
+    "keyboard test", "keyboard review", "keyboard unboxing", "keycaps review",
+    "keycaps unboxing", "key clicks", "key clacks", "switch sounds",
+    "clicky switches", "tactile switches", "linear switches",
+    "cherry mx", "gateron switches", "holy pandas", "topre switches",
+    "membrane vs mechanical", "switch comparison", "switch test",
+    "typewriter sounds", "typewriter asmr",
+  ];
+  const DETECT_KEYWORDS_MED = [
+    // Live / real-time coding (person is actively typing on camera)
+    "live coding", "coding live", "code with me", "coding with me",
+    "coding session", "coding stream", "programming live", "programming with me",
+    "pair programming", "mob programming", "building in public",
+    "react live coding", "react coding session", "react live stream", "react live",
+    "vue live coding", "vue live stream", "angular live coding", "angular live",
+    "typescript live", "javascript live coding", "js live coding",
+    "node live coding", "node.js live", "python live coding",
+    "rust live coding", "rust coding session", "rust live stream",
+    "golang live coding", "go live coding", "kotlin live coding",
+    "swift live coding", "c++ live coding", "cpp live coding",
+    "next.js live coding", "nextjs live", "svelte live coding",
+    "flutter live coding", "react native live coding",
+    "backend live coding", "frontend live coding", "full stack live coding",
+    "web dev live", "devlog", "dev vlog", "coding vlog",
+    "live hackathon", "hackathon coding", "24 hour build", "48 hour build",
+    // Study / work-with-me (ambient keyboard noise almost guaranteed)
+    "study with me", "work with me", "pomodoro session",
+    "deep work session", "coding day",
+    "day in the life developer", "day in the life programmer",
+    "day in the life software engineer", "developer day in the life",
+    "software engineer day", "programmer day",
+    // Desk / setup tours (keyboard usually featured prominently)
+    "desk setup", "battlestation", "battle station",
+    "workstation setup", "home office setup", "setup tour", "workspace tour",
+    // ASMR coding content
+    "asmr coding", "coding asmr", "programming asmr", "developer asmr",
+  ];
+
+  let _clickyBanner = null;
+  let _clickyDetectionDone = false;
+  let _clickyAudioTimer = null;
+
+  function _getVideoTitle() {
+    // YouTube SPA — title element may be any of these selectors
+    const el =
+      document.querySelector("ytd-watch-metadata h1 .yt-core-attributed-string") ||
+      document.querySelector("h1.ytd-video-primary-info-renderer .yt-core-attributed-string") ||
+      document.querySelector("#title h1 .yt-core-attributed-string") ||
+      document.querySelector("h1.ytd-watch-metadata") ||
+      document.querySelector("#title h1");
+    return (el?.textContent || document.title || "").toLowerCase().trim();
+  }
+
+  function _dismissClickyBanner(banner) {
+    const b = banner || _clickyBanner;
+    if (!b) return;
+    b.style.opacity = "0";
+    b.style.transform = "translateX(-50%) translateY(8px)";
+    setTimeout(() => { try { b.remove(); } catch (_) {} }, 320);
+    if (_clickyBanner === b) _clickyBanner = null;
+  }
+
+  function _showClickyBanner() {
+    if (_clickyBanner || isActive || !document.body) return;
+
+    const banner = document.createElement("div");
+    banner.id = "ytdc-clicky-banner";
+    banner.style.cssText = [
+      "position:fixed", "bottom:72px", "left:50%",
+      "transform:translateX(-50%) translateY(6px)",
+      "background:#111", "color:#fff",
+      "border:2px solid #4ade80", "border-radius:10px",
+      "padding:9px 14px", "font-family:ui-monospace,monospace",
+      "font-size:12px", "font-weight:700",
+      "display:flex", "align-items:center", "gap:10px",
+      "z-index:2147483647",
+      "box-shadow:0 4px 24px rgba(0,0,0,0.5),0 0 0 1px rgba(74,222,128,0.3)",
+      "opacity:0", "transition:opacity 0.25s ease,transform 0.25s ease",
+      "pointer-events:auto", "user-select:none", "white-space:nowrap",
+    ].join(";");
+
+    const silenceBtn = document.createElement("button");
+    silenceBtn.textContent = "SILENCE IT";
+    silenceBtn.style.cssText = [
+      "background:#4ade80", "color:#052e16", "border:none",
+      "padding:5px 11px", "font-family:ui-monospace,monospace",
+      "font-weight:700", "font-size:11px", "cursor:pointer",
+      "border-radius:6px", "letter-spacing:0.5px",
+    ].join(";");
+
+    const dismissBtn = document.createElement("button");
+    dismissBtn.textContent = "✕";
+    dismissBtn.setAttribute("aria-label", "Dismiss");
+    dismissBtn.style.cssText = [
+      "background:none", "color:#9ca3af", "border:1px solid #374151",
+      "padding:4px 7px", "font-family:ui-monospace,monospace",
+      "font-size:11px", "cursor:pointer", "border-radius:6px",
+    ].join(";");
+
+    const label = document.createElement("span");
+    label.textContent = "⌨  This video may have keyboard clicking";
+
+    banner.appendChild(label);
+    banner.appendChild(silenceBtn);
+    banner.appendChild(dismissBtn);
+    document.body.appendChild(banner);
+    _clickyBanner = banner;
+
+    // Fade in
+    requestAnimationFrame(() => {
+      banner.style.opacity = "1";
+      banner.style.transform = "translateX(-50%) translateY(0)";
+    });
+
+    // Auto-dismiss after 5 seconds
+    const autoTimer = setTimeout(() => _dismissClickyBanner(banner), 5000);
+
+    silenceBtn.addEventListener("click", () => {
+      clearTimeout(autoTimer);
+      _dismissClickyBanner(banner);
+      // Activate extension immediately
+      isActive = true;
+      connectActive();
+      saveStateImmediate();
+    });
+
+    dismissBtn.addEventListener("click", () => {
+      clearTimeout(autoTimer);
+      _dismissClickyBanner(banner);
+    });
+  }
+
+  function _runTitleDetection(customKeywords) {
+    const title = _getVideoTitle();
+    if (!title || title === "youtube") return false;
+
+    const allHigh = [...DETECT_KEYWORDS_HIGH, ...customKeywords];
+    if (allHigh.some((kw) => title.includes(kw))) return true;
+    // Medium: any single compound phrase (each is already multi-word, so one match suffices)
+    if (DETECT_KEYWORDS_MED.some((kw) => title.includes(kw))) return true;
+    return false;
+  }
+
+  function _startAudioClickDetection() {
+    if (!sourceNode || !audioCtx || _clickyDetectionDone || isActive) return;
+
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0; // raw instantaneous data — needed for transient detection
+    sourceNode.connect(analyser);
+
+    const bufferLen = analyser.frequencyBinCount;
+    const dataArray = new Float32Array(bufferLen);
+    const nyquist = audioCtx.sampleRate / 2;
+    const freqPerBin = nyquist / bufferLen;
+    const lowBin = Math.floor(1000 / freqPerBin);   // 1 kHz
+    const highBin = Math.ceil(6000 / freqPerBin);   // 6 kHz
+
+    let prevBandEnergy = -100;
+    let clickCount = 0;
+    let cooldown = 0;
+    let sample = 0;
+    const MAX_SAMPLES = 40; // 4 s at 100 ms intervals
+
+    _clickyAudioTimer = setInterval(() => {
+      if (_clickyDetectionDone || isActive) {
+        clearInterval(_clickyAudioTimer);
+        try { analyser.disconnect(); } catch (_) {}
+        return;
+      }
+
+      analyser.getFloatFrequencyData(dataArray);
+
+      // Average energy in the click frequency band (1–6 kHz)
+      let sum = 0;
+      for (let i = lowBin; i <= highBin; i++) sum += dataArray[i];
+      const bandEnergy = sum / (highBin - lowBin + 1);
+
+      if (cooldown > 0) {
+        cooldown--;
+      } else {
+        const spike = bandEnergy - prevBandEnergy;
+        // Click signature: sudden rise > 12 dB AND band is active (> -55 dBFS)
+        if (spike > 12 && bandEnergy > -55) {
+          clickCount++;
+          cooldown = 3; // skip 300 ms to avoid double-counting the same click
+        }
+      }
+      prevBandEnergy = bandEnergy;
+      sample++;
+
+      if (sample >= MAX_SAMPLES || clickCount >= 3) {
+        clearInterval(_clickyAudioTimer);
+        try { analyser.disconnect(); } catch (_) {}
+        if (clickCount >= 3 && !_clickyDetectionDone) {
+          _clickyDetectionDone = true;
+          _showClickyBanner();
+        }
+      }
+    }, 100);
+  }
+
+  async function runClickyDetection() {
+    _clickyDetectionDone = false;
+    if (_clickyAudioTimer) { clearInterval(_clickyAudioTimer); _clickyAudioTimer = null; }
+    _dismissClickyBanner();
+
+    const result = await new Promise((resolve) =>
+      chrome.storage.local.get(["ytdc_autodetect", "ytdc_custom_keywords"], resolve)
+    );
+    const autodetect = result.ytdc_autodetect ?? true;
+    if (!autodetect || isActive) return;
+
+    const customKws = (result.ytdc_custom_keywords || "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+
+    // Wait up to 2.5 s for the YouTube SPA to populate the title
+    const tryTitle = (attempt) => {
+      if (_clickyDetectionDone) return;
+      const matched = _runTitleDetection(customKws);
+      if (matched) {
+        _clickyDetectionDone = true;
+        _showClickyBanner();
+        return;
+      }
+      if (attempt < 5) setTimeout(() => tryTitle(attempt + 1), 500);
+      // After title attempts exhausted, fall through to audio analysis
+      // (started separately once sourceNode is ready)
+    };
+    tryTitle(0);
+  }
+
   function observe() {
     if (findAndHook()) return;
     const obs = new MutationObserver(() => {
@@ -566,7 +813,10 @@
     // Only add navigation listener once
     if (!navListenerAdded) {
       navListenerAdded = true;
-      window.addEventListener("yt-navigate-finish", () => setTimeout(findAndHook, 500));
+      window.addEventListener("yt-navigate-finish", () => {
+        setTimeout(findAndHook, 500);
+        runClickyDetection(); // fresh detection on each new video
+      });
     }
   }
 
@@ -683,7 +933,7 @@
       if (result.ytdc_active !== undefined) isActive = result.ytdc_active;
     }
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", observe);
-    } else { observe(); }
+      document.addEventListener("DOMContentLoaded", () => { observe(); runClickyDetection(); });
+    } else { observe(); runClickyDetection(); }
   });
 })();

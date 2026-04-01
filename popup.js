@@ -26,6 +26,9 @@ const updateBanner = $("updateBanner");
 const updateText   = $("updateText");
 const updateLink   = $("updateLink");
 const updateDismiss = $("updateDismiss");
+const detectToggle = $("detectToggle");
+const detectKeywords = $("detectKeywords");
+const customKeywordsEl = $("customKeywords");
 
 let currentMode = "eq";
 let dfDownloaded = false;
@@ -305,9 +308,42 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 });
 
+// ─── Auto-detect ───
+function setDetectToggleUI(on) {
+  detectToggle.textContent = on ? "ON" : "OFF";
+  detectToggle.setAttribute("aria-pressed", on ? "true" : "false");
+  detectToggle.classList.toggle("on", on);
+  detectKeywords.style.display = on ? "" : "none";
+}
+
+function initDetect() {
+  chrome.storage.local.get(["ytdc_autodetect", "ytdc_custom_keywords"], (result) => {
+    const on = result.ytdc_autodetect ?? true;
+    setDetectToggleUI(on);
+    customKeywordsEl.value = result.ytdc_custom_keywords || "";
+  });
+}
+
+detectToggle.addEventListener("click", () => {
+  const isOn = detectToggle.classList.contains("on");
+  const next = !isOn;
+  setDetectToggleUI(next);
+  chrome.storage.local.set({ ytdc_autodetect: next }).catch(() => {});
+});
+
+// Debounced save for the keywords textarea
+let _kwTimer = null;
+customKeywordsEl.addEventListener("input", () => {
+  clearTimeout(_kwTimer);
+  _kwTimer = setTimeout(() => {
+    chrome.storage.local.set({ ytdc_custom_keywords: customKeywordsEl.value }).catch(() => {});
+  }, 600);
+});
+
 // ─── Init ───
 loadTheme();
 initUpdateBanner();
+initDetect();
 refreshState();
 // Retry once after a short delay in case content script is still initializing
 setTimeout(() => { if (!connected) refreshState(); }, 800);

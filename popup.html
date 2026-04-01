@@ -177,6 +177,22 @@
     </div>
   </div>
 
+  <!-- Auto-detect clicky videos -->
+  <div class="detect-section">
+    <div class="detect-header">
+      <span class="section-label">⌨&nbsp; AUTO-DETECT</span>
+      <button class="detect-toggle on" id="detectToggle" aria-pressed="true">ON</button>
+    </div>
+    <div class="detect-keywords" id="detectKeywords">
+      <textarea
+        id="customKeywords"
+        placeholder="Add your own keywords, comma-separated…&#10;e.g. rust live, react coding session"
+        rows="2"
+        spellcheck="false"
+      ></textarea>
+    </div>
+  </div>
+
   <footer class="footer">
     <div id="infoText">Targets 1&ndash;6 kHz click transients. Voice stays clean.</div>
     <button class="bug-report-btn" id="bugReportBtn">&#128027; Report a bug</button>
