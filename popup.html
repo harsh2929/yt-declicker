@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=360">
+<title>Ripple Wave</title>
 <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -10,15 +11,15 @@
 
   <header class="header">
     <div class="brand">
-      <div class="brand-icon">&#9000;</div>
+      <div class="brand-icon"><img src="icon48.png" alt="Ripple Wave" width="32" height="32"></div>
       <div class="brand-text">
-        <h1>DECLICKER</h1>
-        <span class="brand-sub">kill keyboard noise</span>
+        <h1>RIPPLE WAVE</h1>
+        <span class="brand-sub">kill keyboard noise on videos</span>
       </div>
     </div>
     <div class="header-controls">
-      <button class="theme-toggle" id="themeToggle" title="Toggle theme">&#9728;</button>
-      <div class="status-badge" id="status">OFF</div>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">&#9728;</button>
+      <div class="status-badge" id="status" role="status" aria-live="polite">OFF</div>
     </div>
   </header>
 
@@ -34,14 +35,14 @@
 
   <div class="power-row">
     <span class="power-label">Power</span>
-    <button class="power-btn" id="toggle">OFF</button>
+    <button class="power-btn" id="toggle" aria-pressed="false">OFF</button>
   </div>
 
   <div class="section">
     <div class="section-label">Engine</div>
     <div class="engine-grid">
 
-      <button class="engine-card active" data-mode="eq">
+      <button class="engine-card active" data-mode="eq" aria-label="EQ Lite engine, best for casual viewers">
         <div class="engine-header">
           <div class="engine-identity">
             <div class="engine-name">EQ Lite</div>
@@ -74,7 +75,7 @@
         </div>
       </button>
 
-      <button class="engine-card" data-mode="ml">
+      <button class="engine-card" data-mode="ml" aria-label="RNNoise ML engine, best for broader noise">
         <div class="engine-header">
           <div class="engine-identity">
             <div class="engine-name">RNNoise</div>
@@ -107,7 +108,7 @@
         </div>
       </button>
 
-      <button class="engine-card" data-mode="deep">
+      <button class="engine-card" data-mode="deep" aria-label="DeepFilter deep learning engine, best for audiophiles">
         <div class="engine-header">
           <div class="engine-identity">
             <div class="engine-name">DeepFilter</div>
@@ -115,7 +116,7 @@
           </div>
           <div class="engine-best-for">Best for: audiophiles</div>
         </div>
-        <div class="engine-desc">DeepFilterNet3 deep-learning model (~2 MB, one-time download). Maximum possible clarity — state of the art.</div>
+        <div class="engine-desc">DeepFilterNet3 deep-learning model, bundled locally with the extension. Maximum possible clarity — state of the art.</div>
         <div class="engine-stats">
           <div class="stat-row">
             <span class="stat-label">&#9889; Speed</span>
@@ -134,8 +135,8 @@
           </div>
           <div class="stat-row">
             <span class="stat-label">&#128230; Setup</span>
-            <div class="stat-track"><div class="stat-fill" style="--bar:var(--deep-accent);--target:65%"></div></div>
-            <span class="stat-val">1 DL</span>
+            <div class="stat-track"><div class="stat-fill" style="--bar:var(--deep-accent);--target:92%"></div></div>
+            <span class="stat-val">Bundled</span>
           </div>
         </div>
       </button>
@@ -145,24 +146,17 @@
 
   <div class="df-panel" id="dfPanel">
     <div class="df-row">
-      <span class="df-icon" id="dfIcon">&#9675;</span>
-      <span class="df-text" id="dfText">Model not downloaded</span>
-      <span class="df-size">~2 MB</span>
+      <span class="df-icon" id="dfIcon">&#10003;</span>
+      <span class="df-text" id="dfText">Bundled locally</span>
+      <span class="df-size">~17 MB</span>
     </div>
-    <div class="df-progress" id="dfProgress">
-      <div class="df-progress-label" id="dfProgressLabel">Downloading WASM...</div>
-      <div class="df-bar">
-        <div class="df-bar-fill" id="dfBarFill"></div>
-      </div>
-    </div>
-    <button class="btn btn-download" id="dfBtn">DOWNLOAD MODEL</button>
-    <button class="btn btn-delete" id="dfDeleteBtn">DELETE MODEL</button>
+    <p class="df-note" id="dfNote">Ships with Ripple Wave and caches in IndexedDB on first use.</p>
   </div>
 
   <div class="section">
     <div class="section-label" id="intensityLabel">Intensity</div>
     <div class="range-row">
-      <input type="range" id="intensity" min="0" max="100" value="70">
+      <input type="range" id="intensity" min="0" max="100" value="70" aria-labelledby="intensityLabel">
       <span class="range-val" id="intensityVal">70</span>
     </div>
   </div>
@@ -172,7 +166,7 @@
     <div class="preset-row">
       <button class="btn btn-preset" data-val="30">LIGHT</button>
       <button class="btn btn-preset" data-val="60">MED</button>
-      <button class="btn btn-preset active" data-val="85">HEAVY</button>
+      <button class="btn btn-preset" data-val="85">HEAVY</button>
       <button class="btn btn-preset" data-val="100">NUKE</button>
     </div>
   </div>
@@ -180,7 +174,10 @@
   <!-- Channel rules -->
   <div class="channels-section" id="channelsSection">
     <button class="channels-header" id="channelsHeaderBtn" aria-expanded="false">
-      <span class="section-label">📺&nbsp; CHANNELS</span>
+      <div class="section-header-text">
+        <span class="section-label">📺&nbsp; SOURCES</span>
+        <span class="section-desc">Auto-activate or mute per channel, subreddit, page, or account</span>
+      </div>
       <span class="channels-caret" id="channelsCaret">›</span>
     </button>
     <div class="channels-body" id="channelsBody">
@@ -190,7 +187,7 @@
       <div id="chList"></div>
       <p class="ch-empty" id="chEmpty" style="display:none">
         No channels saved yet.<br>
-        Open a YouTube video to set a rule.
+        Open a YouTube, Reddit, X, Twitch, Facebook, LinkedIn, or Kick video to set a rule.
       </p>
     </div>
   </div>
@@ -198,25 +195,35 @@
   <!-- Auto-detect clicky videos -->
   <div class="detect-section">
     <div class="detect-header">
-      <span class="section-label">⌨&nbsp; AUTO-DETECT</span>
+      <div class="section-header-text">
+        <span class="section-label">⌨&nbsp; AUTO-DETECT</span>
+        <span class="section-desc">Scans video titles &amp; audio for keyboard noise</span>
+      </div>
       <button class="detect-toggle on" id="detectToggle" aria-pressed="true">ON</button>
     </div>
     <div class="detect-keywords" id="detectKeywords">
-      <textarea
-        id="customKeywords"
-        placeholder="Add your own keywords, comma-separated…&#10;e.g. rust live, react coding session"
-        rows="2"
-        spellcheck="false"
-      ></textarea>
+      <div class="detect-topics-label">Active topics</div>
+      <div class="detect-topics" id="detectTopics"></div>
+      <div class="detect-add-row">
+        <input
+          type="text"
+          id="customKeywordInput"
+          aria-label="Add custom keyword"
+          placeholder="Add keyword &amp; press Enter"
+          maxlength="80"
+          spellcheck="false"
+        />
+      </div>
     </div>
   </div>
 
   <footer class="footer">
-    <div id="infoText">Targets 1&ndash;6 kHz click transients. Voice stays clean.</div>
     <button class="bug-report-btn" id="bugReportBtn">&#128027; Report a bug</button>
+    <div class="shortcut-hint">Toggle with <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></div>
   </footer>
 
 </div>
+<script src="settings-sync.js"></script>
 <script src="popup.js"></script>
 </body>
 </html>

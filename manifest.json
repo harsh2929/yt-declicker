@@ -1,18 +1,35 @@
 {
   "manifest_version": 3,
-  "name": "YT DeClicker",
-  "version": "3.1.0",
-  "description": "Filters keyboard noise from YouTube — EQ, RNNoise ML, or DeepFilterNet3 deep learning",
+  "name": "Ripple Wave",
+  "version": "3.2.0",
+  "description": "Filters keyboard noise from YouTube, Reddit, X, Twitch, Facebook, LinkedIn, and Kick videos — EQ, RNNoise ML, or DeepFilterNet3 deep learning",
   "permissions": ["storage", "scripting", "activeTab", "unlimitedStorage"],
   "host_permissions": [
     "*://*.youtube.com/*",
-    "*://cdn.mezon.ai/*",
+    "*://*.reddit.com/*",
+    "*://*.x.com/*",
+    "*://*.twitter.com/*",
+    "*://*.twitch.tv/*",
+    "*://*.facebook.com/*",
+    "*://fb.watch/*",
+    "*://*.linkedin.com/*",
+    "*://*.kick.com/*",
     "*://api.github.com/*"
   ],
   "content_scripts": [
     {
-      "matches": ["*://*.youtube.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "*://*.youtube.com/*",
+        "*://*.reddit.com/*",
+        "*://*.x.com/*",
+        "*://*.twitter.com/*",
+        "*://*.twitch.tv/*",
+        "*://*.facebook.com/*",
+        "*://fb.watch/*",
+        "*://*.linkedin.com/*",
+        "*://*.kick.com/*"
+      ],
+      "js": ["settings-sync.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
@@ -22,17 +39,38 @@
         "rnnoise-worklet.js",
         "rnnoise.wasm",
         "rnnoise_simd.wasm",
-        "deepfilter-worklet.js"
+        "deepfilter-worklet.js",
+        "assets/deepfilter/df_bg.wasm",
+        "assets/deepfilter/DeepFilterNet3_onnx.tar.gz"
       ],
-      "matches": ["*://*.youtube.com/*"]
+      "matches": [
+        "*://*.youtube.com/*",
+        "*://*.reddit.com/*",
+        "*://*.x.com/*",
+        "*://*.twitter.com/*",
+        "*://*.twitch.tv/*",
+        "*://*.facebook.com/*",
+        "*://fb.watch/*",
+        "*://*.linkedin.com/*",
+        "*://*.kick.com/*"
+      ]
     }
   ],
   "background": {
     "service_worker": "background.js"
   },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": { "48": "icon48.png" }
   },
-  "icons": { "48": "icon48.png", "128": "icon128.png" }
+  "icons": { "48": "icon48.png", "128": "icon128.png" },
+  "commands": {
+    "toggle-filter": {
+      "suggested_key": { "default": "Alt+Shift+R" },
+      "description": "Toggle Ripple Wave filter on/off"
+    }
+  }
 }

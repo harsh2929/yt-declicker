@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 
-const GITHUB_URL = 'https://github.com/harsh2929/yt-declicker'
+const GITHUB_URL = 'https://github.com/harsh2929/ripple-wave'
 
 function GitHubIcon({ size = 20 }: { size?: number }) {
   return (
@@ -32,18 +32,40 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    version: '3.2.0',
+    date: '2026-04-03',
+    tag: 'LATEST',
+    summary: 'Seven-platform support, keyboard shortcut toggle, extension badge, universal presets, scoped MutationObserver, sync retry hardening, and multiple robustness fixes.',
+    changes: [
+      { type: 'new',      text: 'Seven platforms supported: YouTube, Reddit, X/Twitter, Twitch, Facebook, LinkedIn, and Kick — with per-site video detection and channel/account extraction.' },
+      { type: 'new',      text: 'Keyboard shortcut (Alt+Shift+R) to toggle the filter without opening the popup. Customizable via chrome://extensions/shortcuts.' },
+      { type: 'new',      text: 'Extension badge shows green "ON" when active — visible at a glance, auto-syncs across popup, shortcut, and content script.' },
+      { type: 'new',      text: 'Per-channel / per-source rules — set ALWAYS, ASK, or EXCLUDE for any YouTube channel, subreddit, X account, Twitch streamer, Facebook page, LinkedIn profile, or Kick creator.' },
+      { type: 'new',      text: 'Auto-detect clicky videos via title keyword matching (13 built-in topic categories) and real-time audio click frequency analysis.' },
+      { type: 'new',      text: 'Custom keyword input — add your own detection keywords from the popup.' },
+      { type: 'improved', text: 'Presets (LIGHT / MED / HEAVY / NUKE) now visible for all three engines, not just EQ.' },
+      { type: 'improved', text: 'MutationObserver scoped to site-specific containers (e.g., YouTube #content, Reddit shreddit-app, X main) instead of document.body — reduces CPU overhead on heavy pages.' },
+      { type: 'improved', text: 'Settings sync retry hardened — stops retrying after 3 consecutive failures when chrome.storage.sync quota is exceeded, preventing infinite loops.' },
+      { type: 'improved', text: 'crossOrigin attribute only set on videos before loading (readyState 0) — prevents visible video restart on non-YouTube platforms.' },
+      { type: 'improved', text: 'Corrupted WASM/model cache in IndexedDB is now auto-cleared on compile failure so the next attempt re-fetches from the extension bundle.' },
+      { type: 'improved', text: 'State loaded exclusively from chrome.storage instead of per-origin localStorage — consistent state across all 7 platforms.' },
+      { type: 'fixed',    text: 'sourceNode null-guard added to all three audio chain functions (EQ, RNNoise, DeepFilter) — prevents crash if video is detached during async connection.' },
+      { type: 'fixed',    text: 'Title detection guard expanded to all supported site names (reddit, twitch, facebook, linkedin, kick) — prevents false positives on homepage titles.' },
+      { type: 'removed',  text: 'Feature request form removed from extension popup — moved to the website only.' },
+    ],
+  },
+  {
     version: '3.1.0',
     date: '2026-04-01',
-    tag: 'LATEST',
-    summary: 'Popup now works fully off YouTube — download models, switch engines, and adjust intensity from any tab. Plus an in-popup update notifier.',
+    summary: 'Popup now works fully off YouTube/Reddit — download models, switch engines, and adjust intensity from any tab. Plus an in-popup update notifier.',
     changes: [
-      { type: 'new',      text: 'All popup features (engine selection, intensity, power, model download/delete) now work on any browser tab — no YouTube tab required.' },
-      { type: 'new',      text: 'Model download routes directly through the background service worker. Settings are stored in chrome.storage.local and synced to the content script on next YouTube load.' },
+      { type: 'new',      text: 'All popup features (engine selection, intensity, power, model download/delete) now work on any browser tab — no YouTube or Reddit tab required.' },
+      { type: 'new',      text: 'Model download routes directly through the background service worker. Settings are stored in chrome.storage.local and synced to the content script on next YouTube or Reddit load.' },
       { type: 'new',      text: 'In-popup update banner — checks GitHub releases on startup and shows a dismissible "v3.x.x available" notice when a newer version is found.' },
-      { type: 'new',      text: 'Status badge distinguishes OFFLINE (not on YouTube, expected) from NO SCRIPT (on YouTube but script not loaded).' },
-      { type: 'improved', text: 'DeepFilterNet3 assets staged in chrome.storage.local are imported into IndexedDB automatically on next YouTube load — no re-download needed.' },
+      { type: 'new',      text: 'Status badge distinguishes OFFLINE (not on YouTube/Reddit, expected) from NO SCRIPT (on YouTube/Reddit but script not loaded).' },
+      { type: 'improved', text: 'DeepFilterNet3 assets staged in chrome.storage.local are imported into IndexedDB automatically on next YouTube or Reddit load — no re-download needed.' },
       { type: 'improved', text: 'After model download, progress bar shows "Model loaded!" then smoothly fades out after 5 seconds.' },
-      { type: 'fixed',    text: 'Engine cards and intensity slider now retain their values when the popup is opened off YouTube.' },
+      { type: 'fixed',    text: 'Engine cards and intensity slider now retain their values when the popup is opened off YouTube/Reddit.' },
     ],
   },
   {
@@ -244,10 +266,10 @@ export default function ChangelogContent() {
               className="w-9 h-9 bg-[#FFE500] font-mono font-black text-[11px] flex items-center justify-center border-2 border-[#111] rounded-sm"
               style={{ boxShadow: '2px 2px 0 #111' }}
             >
-              YD
+              RW
             </div>
             <span className="font-black text-[17px] tracking-tight">
-              YT De<span className="bg-[#FFE500] px-1 border border-[#111]">CLICKER</span>
+              RIPPLE <span className="bg-[#FFE500] px-1 border border-[#111]">WAVE</span>
             </span>
           </Link>
 
@@ -357,7 +379,7 @@ export default function ChangelogContent() {
       {/* ── FOOTER ── */}
       <footer className="border-t-[3px] border-[#111] bg-[#111] text-[#888]">
         <div className="max-w-6xl mx-auto px-5 py-8 flex flex-wrap gap-6 items-center justify-between">
-          <span className="font-mono text-[12px]">YT DeClicker — open source, always free.</span>
+          <span className="font-mono text-[12px]">Ripple Wave — open source, always free.</span>
           <div className="flex items-center gap-5 font-mono text-[12px]">
             <Link href="/"          className="hover:text-white transition-colors">HOME</Link>
             <Link href="/docs"      className="hover:text-white transition-colors">DOCS</Link>

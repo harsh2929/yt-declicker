@@ -1,4 +1,4 @@
-// popup.js — YT DeClicker v3 (no inline scripts, CSP-safe)
+// popup.js — Ripple Wave v3 (no inline scripts, CSP-safe)
 
 const $ = (id) => document.getElementById(id);
 
@@ -11,14 +11,9 @@ const engineCards = document.querySelectorAll(".engine-card");
 const dfPanel = $("dfPanel");
 const dfIcon = $("dfIcon");
 const dfText = $("dfText");
-const dfBtn = $("dfBtn");
-const dfDeleteBtn = $("dfDeleteBtn");
-const dfProgress = $("dfProgress");
-const dfProgressLabel = $("dfProgressLabel");
-const dfBarFill = $("dfBarFill");
+const dfNote = $("dfNote");
 const eqPresets = $("eqPresets");
 const presetBtns = document.querySelectorAll(".btn-preset");
-const infoText = $("infoText");
 const themeToggle = $("themeToggle");
 const engineGrid = document.querySelector(".engine-grid");
 const bugReportBtn = $("bugReportBtn");
@@ -28,7 +23,8 @@ const updateLink   = $("updateLink");
 const updateDismiss = $("updateDismiss");
 const detectToggle = $("detectToggle");
 const detectKeywords = $("detectKeywords");
-const customKeywordsEl = $("customKeywords");
+const detectTopicsEl = $("detectTopics");
+const customKeywordInput = $("customKeywordInput");
 const channelsSection = $("channelsSection");
 const channelsHeaderBtn = $("channelsHeaderBtn");
 const channelsBody = $("channelsBody");
@@ -37,47 +33,55 @@ const chList = $("chList");
 const chEmpty = $("chEmpty");
 
 let currentMode = "eq";
-let dfDownloaded = false;
-let progressListener = null;
+let dfDownloaded = true;
 let connected = false; // tracks if content script is reachable
 
 const MODE_INFO = {
-  eq: {
-    desc: "Targets 1\u20136 kHz click transients. ~70% removal. Voice stays clean.",
-    label: "INTENSITY",
-  },
-  ml: {
-    desc: "RNNoise: 48kHz RNN, 150KB bundled. Great for clicks + fan noise.",
-    label: "OUTPUT BOOST",
-  },
-  deep: {
-    desc: "DeepFilterNet3 full-band deep filtering. Best quality. ~2MB one-time download.",
-    label: "SUPPRESSION",
-  },
+  eq:   { label: "INTENSITY"   },
+  ml:   { label: "OUTPUT BOOST" },
+  deep: { label: "SUPPRESSION"  },
 };
 
 // ─── Storage helpers ───
 // chrome.storage.local is accessible from popup, background, and content script.
 // We use it as the source of truth so the popup works even when off YouTube.
 function loadFromStorage() {
-  return new Promise((resolve) => {
+  const fallback = () => new Promise((resolve) => {
     chrome.storage.local.get(
-      ["ytdc_active", "ytdc_mode", "ytdc_intensity", "ytdc_df_downloaded"],
+      ["ytdc_active", "ytdc_mode", "ytdc_intensity"],
       (result) => {
-        resolve({
-          active: result.ytdc_active ?? false,
-          mode: result.ytdc_mode ?? "eq",
-          intensity: result.ytdc_intensity ?? 70,
-          dfDownloaded: result.ytdc_df_downloaded ?? false,
-          hooked: false,
-        });
+        resolve(result || {});
       }
     );
   });
+
+  const load = globalThis.RippleWaveSettings?.getSettings
+    ? globalThis.RippleWaveSettings.getSettings(["ytdc_active", "ytdc_mode", "ytdc_intensity"]).catch(fallback)
+    : fallback();
+
+  return Promise.resolve(load).then((result) => ({
+    active: result.ytdc_active ?? false,
+    mode: result.ytdc_mode ?? "eq",
+    intensity: result.ytdc_intensity ?? 70,
+    dfDownloaded: true,
+    hooked: false,
+  }));
 }
 
-function saveToStorage(updates) {
-  chrome.storage.local.set(updates).catch(() => {});
+function getSyncedSettings(keys) {
+  if (globalThis.RippleWaveSettings?.getSettings) {
+    return globalThis.RippleWaveSettings.getSettings(keys);
+  }
+  return new Promise((resolve) => {
+    chrome.storage.local.get(keys, resolve);
+  });
+}
+
+function saveToStorage(updates, options = {}) {
+  if (globalThis.RippleWaveSettings?.setSettings) {
+    return globalThis.RippleWaveSettings.setSettings(updates, options).catch(() => {});
+  }
+  return chrome.storage.local.set(updates).catch(() => {});
 }
 
 // ─── Theme ───
@@ -97,17 +101,41 @@ themeToggle.addEventListener("click", () => {
 });
 
 // ─── Connection Status UI ───
+function _isSupportedSite(url) {
+  if (!url) return false;
+  try {
+    const { hostname } = new URL(url);
+    return hostname === "youtube.com" ||
+      hostname.endsWith(".youtube.com") ||
+      hostname === "reddit.com" ||
+      hostname.endsWith(".reddit.com") ||
+      hostname === "x.com" ||
+      hostname.endsWith(".x.com") ||
+      hostname === "twitter.com" ||
+      hostname.endsWith(".twitter.com") ||
+      hostname === "twitch.tv" ||
+      hostname.endsWith(".twitch.tv") ||
+      hostname === "facebook.com" ||
+      hostname.endsWith(".facebook.com") ||
+      hostname === "fb.watch" ||
+      hostname === "linkedin.com" ||
+      hostname.endsWith(".linkedin.com") ||
+      hostname === "kick.com" ||
+      hostname.endsWith(".kick.com");
+  } catch (e) {
+    return false;
+  }
+}
+
 function showDisconnected() {
   connected = false;
   statusEl.textContent = "NO SCRIPT";
   statusEl.className = "status-badge no-video";
-  infoText.textContent =
-    "Content script not loaded. Click \u201cInject & Retry\u201d or refresh the YouTube tab.";
+  // status shown via badge only
   $("injectRow").style.display = "flex";
 }
 
 function showOffline() {
-  // Not on YouTube — expected state, settings still work via storage
   connected = false;
   statusEl.textContent = "OFFLINE";
   statusEl.className = "status-badge no-video";
@@ -118,58 +146,78 @@ function hideInjectRow() {
   $("injectRow").style.display = "none";
 }
 
+
 // ─── Messaging ───
-// sendMsg always calls cb(resp) — resp is null on error.
+// sendMsg always calls cb(resp) — resp is null on error or timeout.
 // Also distinguishes "on YouTube but no script" from "not on YouTube".
+// A 3s timeout prevents the popup from hanging forever if the content script
+// crashes or the async handler swallows an error.
+const SEND_MSG_TIMEOUT_MS = 3000;
 function sendMsg(msg, cb) {
+  let cbCalled = false;
+  const callOnce = (resp) => { if (cbCalled) return; cbCalled = true; if (cb) cb(resp); };
+
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (chrome.runtime.lastError || !tabs[0]) {
       showOffline();
-      if (cb) cb(null);
+      callOnce(null);
       return;
     }
     const tab = tabs[0];
-    const isYouTube = tab.url && tab.url.includes("youtube.com");
+    const isSupportedSite = _isSupportedSite(tab.url);
+
+    const timeoutId = setTimeout(() => {
+      if (cbCalled) return;
+      if (isSupportedSite) showDisconnected();
+      else showOffline();
+      callOnce(null);
+    }, SEND_MSG_TIMEOUT_MS);
 
     chrome.tabs.sendMessage(tab.id, msg, (resp) => {
+      clearTimeout(timeoutId);
       if (chrome.runtime.lastError) {
-        if (isYouTube) {
-          showDisconnected();
-        } else {
-          showOffline();
-        }
-        if (cb) cb(null);
+        if (isSupportedSite) showDisconnected();
+        else showOffline();
+        callOnce(null);
         return;
       }
       connected = true;
       hideInjectRow();
-      if (cb) cb(resp);
+      callOnce(resp);
     });
   });
 }
 
 // Inject content script programmatically and retry connection
 async function injectAndRetry() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab) return;
+  const btn = $("injectBtn");
+  if (btn.disabled) return;
+  btn.disabled = true;
 
-  if (!tab.url || !tab.url.includes("youtube.com")) {
-    statusEl.textContent = "NOT YT";
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab) { btn.disabled = false; return; }
+
+  if (!_isSupportedSite(tab.url)) {
+    statusEl.textContent = "NO SITE";
     statusEl.className = "status-badge no-video";
-    infoText.textContent = "Open a YouTube video tab first.";
+    // status shown via badge
+    btn.disabled = false;
     return;
   }
 
   try {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: ["content.js"],
+      files: ["settings-sync.js", "content.js"],
     });
     // Wait for script to initialize
     setTimeout(refreshState, 500);
   } catch (e) {
-    console.warn("[YT DeClicker] Injection failed:", e.message);
-    infoText.textContent = "Injection failed. Try refreshing the YouTube tab.";
+    console.warn("[Ripple Wave] Injection failed:", e.message);
+    statusEl.textContent = "FAILED";
+    statusEl.className = "status-badge no-video";
+  } finally {
+    setTimeout(() => { btn.disabled = false; }, 2000);
   }
 }
 
@@ -183,35 +231,25 @@ function updateModeUI(modeVal, downloaded) {
   });
 
   const info = MODE_INFO[modeVal];
-  infoText.textContent = info.desc;
   intensityLabel.textContent = info.label;
 
   // DeepFilter panel
   dfPanel.classList.toggle("show", modeVal === "deep");
-  eqPresets.style.display = modeVal === "eq" ? "" : "none";
+  // Show presets for all modes — they map to the universal intensity slider
+  eqPresets.style.display = "";
 
   if (modeVal === "deep") {
-    if (downloaded) {
-      dfPanel.classList.add("downloaded");
-      dfIcon.textContent = "\u2713";
-      dfText.textContent = "Model ready";
-      dfBtn.style.display = "none";
-      dfDeleteBtn.style.display = "";
-    } else {
-      dfPanel.classList.remove("downloaded");
-      dfIcon.textContent = "\u25CB";
-      dfText.textContent = "Model not downloaded";
-      dfBtn.style.display = "";
-      dfBtn.disabled = false;
-      dfBtn.textContent = "DOWNLOAD MODEL";
-      dfDeleteBtn.style.display = "none";
-      dfProgress.classList.remove("show");
+    dfIcon.textContent = "\u2713";
+    dfText.textContent = "Bundled locally";
+    if (dfNote) {
+      dfNote.textContent = "Ships with Ripple Wave and caches in IndexedDB on first use.";
     }
   }
 }
 
 function updateUI(state) {
   if (!state) return;
+  const effectiveActive = state.effectiveActive ?? state.active;
 
   // Power button
   if (state.active) {
@@ -221,6 +259,7 @@ function updateUI(state) {
     toggle.textContent = "OFF";
     toggle.classList.remove("on");
   }
+  toggle.setAttribute("aria-pressed", String(!!state.active));
 
   // Status badge — only update when connected to content script,
   // otherwise the status was already set by showOffline/showDisconnected.
@@ -228,7 +267,7 @@ function updateUI(state) {
     if (!state.hooked) {
       statusEl.textContent = "NO VIDEO";
       statusEl.className = "status-badge no-video";
-    } else if (state.active) {
+    } else if (effectiveActive) {
       statusEl.textContent = "ACTIVE";
       statusEl.className = "status-badge on";
     } else {
@@ -261,25 +300,22 @@ async function refreshState() {
     if (resp) {
       const liveState = {
         active: resp.active,
+        effectiveActive: resp.effectiveActive,
         mode: resp.mode,
         intensity: resp.intensity,
         hooked: resp.hooked,
-        dfDownloaded: resp.dfDownloaded || stored.dfDownloaded,
+        dfDownloaded: true,
       };
       updateUI(liveState);
-      // Keep storage in sync with live content script state
-      saveToStorage({
-        ytdc_active: resp.active,
-        ytdc_mode: resp.mode,
-        ytdc_intensity: resp.intensity,
-        ytdc_df_downloaded: liveState.dfDownloaded,
-      });
+      refreshCurrentChannel(resp.hooked ? 4 : 8, resp.hooked ? 300 : 450);
     }
   });
 }
 
 // ─── Update Banner ───
 function showUpdateBanner(version, url) {
+  // Defense-in-depth: only accept GitHub URLs for the update link
+  if (!url || !url.startsWith("https://github.com/")) return;
   updateText.textContent = `v${version} available`;
   updateLink.href = url;
   updateBanner.style.display = "flex";
@@ -308,9 +344,12 @@ updateDismiss.addEventListener("click", () => {
 });
 
 // Reset dismissed flag whenever a new update_version is stored
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.ytdc_update_version) {
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local" && changes.ytdc_update_version) {
     chrome.storage.local.set({ ytdc_update_dismissed: false });
+  }
+  if ((areaName === "sync" || areaName === "local") && changes.ytdc_channel_rules) {
+    refreshCurrentChannel(1, 0);
   }
 });
 
@@ -333,12 +372,12 @@ function _makeAvatar(name, iconUrl) {
     img.alt = "";
     img.addEventListener("error", () => {
       img.remove();
-      wrap.textContent = (name[0] || "?").toUpperCase();
+      wrap.textContent = ([...name][0] || "?").toUpperCase();
       wrap.style.background = _chColor(name);
     });
     wrap.appendChild(img);
   } else {
-    wrap.textContent = (name[0] || "?").toUpperCase();
+    wrap.textContent = ([...name][0] || "?").toUpperCase();
     wrap.style.background = _chColor(name);
   }
   return wrap;
@@ -367,29 +406,46 @@ function _makeRuleSeg(currentRule, onSelect) {
   return seg;
 }
 
-function _saveChannelRule(id, name, iconUrl, rule) {
-  chrome.storage.local.get(["ytdc_channel_rules"], (res) => {
-    const rules = res.ytdc_channel_rules || {};
-    rules[id] = { name, iconUrl, rule };
-    chrome.storage.local.set({ ytdc_channel_rules: rules }, () => renderChannelList(rules));
-  });
+function _getRuleMatch(rules, infoOrId) {
+  if (!rules) return null;
+  if (typeof infoOrId === "string") {
+    return rules[infoOrId] ? { key: infoOrId, entry: rules[infoOrId] } : null;
+  }
+  const keys = Array.isArray(infoOrId?.ruleKeys) && infoOrId.ruleKeys.length > 0
+    ? infoOrId.ruleKeys
+    : [infoOrId?.id].filter(Boolean);
+  for (const key of keys) {
+    if (rules[key]) return { key, entry: rules[key] };
+  }
+  return null;
 }
 
-function _removeChannelRule(id) {
-  chrome.storage.local.get(["ytdc_channel_rules"], (res) => {
-    const rules = res.ytdc_channel_rules || {};
-    delete rules[id];
-    chrome.storage.local.set({ ytdc_channel_rules: rules }, () => {
-      renderChannelList(rules);
-      // Re-render current channel strip without the saved rule
-      if (_currentChInfo && _currentChInfo.id === id) {
-        renderCurrentChannel(_currentChInfo, rules);
-      }
-    });
-  });
+async function _saveChannelRule(id, name, iconUrl, rule, ruleKeys = []) {
+  const res = await getSyncedSettings(["ytdc_channel_rules"]).catch(() => ({}));
+  const rules = res.ytdc_channel_rules || {};
+  const cleanupKeys = new Set(Array.isArray(ruleKeys) ? ruleKeys : []);
+  cleanupKeys.delete(id);
+  cleanupKeys.forEach((key) => { delete rules[key]; });
+  rules[id] = { name, iconUrl, rule };
+  await saveToStorage({ ytdc_channel_rules: rules }, { immediate: true });
+  renderChannelList(rules);
+}
+
+async function _removeChannelRule(id) {
+  const res = await getSyncedSettings(["ytdc_channel_rules"]).catch(() => ({}));
+  const rules = res.ytdc_channel_rules || {};
+  delete rules[id];
+  await saveToStorage({ ytdc_channel_rules: rules }, { immediate: true });
+  renderChannelList(rules);
+  // Re-render current channel strip without the saved rule
+  if (_currentChInfo && (_currentChInfo.id === id || (_currentChInfo.ruleKeys || []).includes(id))) {
+    renderCurrentChannel(_currentChInfo, rules);
+  }
 }
 
 let _currentChInfo = null;
+let _channelRefreshTimer = null;
+let _channelRefreshSeq = 0;
 
 function _buildChRow(id, name, iconUrl, rule, extraActions) {
   const row = document.createElement("div");
@@ -409,6 +465,24 @@ function _buildChRow(id, name, iconUrl, rule, extraActions) {
   if (extraActions) extraActions(actWrap, id, name, iconUrl);
   row.appendChild(actWrap);
   return row;
+}
+
+function _getSourceLabel(info) {
+  switch (info?.sourceType) {
+    case "account":
+      return "Current account";
+    case "page":
+      return "Current page";
+    case "profile":
+      return "Current profile";
+    case "creator":
+      return "Current creator";
+    case "subreddit":
+      return "Current subreddit";
+    case "channel":
+    default:
+      return "Current channel";
+  }
 }
 
 function renderChannelList(rules) {
@@ -444,10 +518,11 @@ function renderCurrentChannel(info, rules) {
 
   const label = document.createElement("div");
   label.className = "ch-current-label";
-  label.textContent = "Current video";
+  label.textContent = _getSourceLabel(info);
   chCurrentWrap.appendChild(label);
 
-  const savedRule = (rules || {})[info.id]?.rule || null;
+  const matchedRule = _getRuleMatch(rules || {}, info);
+  const savedRule = matchedRule?.entry?.rule || null;
   chCurrentWrap.appendChild(
     _buildChRow(info.id, info.name, info.iconUrl, savedRule, savedRule
       ? (wrap, cId, cName, cIcon) => {
@@ -455,16 +530,54 @@ function renderCurrentChannel(info, rules) {
           del.className = "ch-delete-btn";
           del.title = "Remove rule";
           del.textContent = "\u2715";
-          del.addEventListener("click", () => _removeChannelRule(cId));
+          del.addEventListener("click", () => _removeChannelRule(matchedRule?.key || cId));
           wrap.appendChild(del);
         }
       : null
     )
   );
 
+  const row = chCurrentWrap.querySelector(".ch-row");
+  const seg = row?.querySelector(".rule-seg");
+  if (seg) {
+    seg.replaceWith(_makeRuleSeg(savedRule, (r) => _saveChannelRule(info.id, info.name, info.iconUrl, r, info.ruleKeys || [])));
+  }
+
   const divider = document.createElement("div");
   divider.style.cssText = "height:1px;background:var(--border);margin:4px 0";
   chCurrentWrap.appendChild(divider);
+}
+
+function refreshCurrentChannel(maxRetries = 6, delayMs = 400) {
+  const seq = ++_channelRefreshSeq;
+  if (_channelRefreshTimer) {
+    clearTimeout(_channelRefreshTimer);
+    _channelRefreshTimer = null;
+  }
+
+  const attempt = async (remaining) => {
+    const res = await getSyncedSettings(["ytdc_channel_rules"]).catch(() => ({}));
+    if (seq !== _channelRefreshSeq) return;
+    const rules = res.ytdc_channel_rules || {};
+    renderChannelList(rules);
+
+    sendMsg({ action: "getChannelInfo" }, (resp) => {
+      if (seq !== _channelRefreshSeq) return;
+      _currentChInfo = resp || null;
+      renderCurrentChannel(_currentChInfo, rules);
+
+      if (resp && localStorage.getItem("ytdc_channels_open") === null) {
+        channelsSection.classList.add("open");
+        channelsHeaderBtn.setAttribute("aria-expanded", "true");
+      }
+
+      if (!_currentChInfo && remaining > 0 && connected) {
+        _channelRefreshTimer = setTimeout(() => attempt(remaining - 1), delayMs);
+      }
+    });
+  };
+
+  attempt(maxRetries);
 }
 
 function initChannels() {
@@ -472,17 +585,10 @@ function initChannels() {
   if (expanded) channelsSection.classList.add("open");
   channelsHeaderBtn.setAttribute("aria-expanded", String(expanded));
 
-  chrome.storage.local.get(["ytdc_channel_rules"], (res) => {
-    const rules = res.ytdc_channel_rules || {};
+  getSyncedSettings(["ytdc_channel_rules"]).then((res) => {
+    const rules = res?.ytdc_channel_rules || {};
     renderChannelList(rules);
-    sendMsg({ action: "getChannelInfo" }, (resp) => {
-      _currentChInfo = resp || null;
-      renderCurrentChannel(_currentChInfo, rules);
-      if (resp && localStorage.getItem("ytdc_channels_open") === null) {
-        channelsSection.classList.add("open");
-        channelsHeaderBtn.setAttribute("aria-expanded", "true");
-      }
-    });
+    refreshCurrentChannel(8, 450);
   });
 }
 
@@ -500,11 +606,87 @@ function setDetectToggleUI(on) {
   detectKeywords.style.display = on ? "" : "none";
 }
 
+// ─── Built-in topic categories ───
+// These map to the keyword groups in content.js DETECT_KEYWORDS_HIGH/MED.
+// Users can disable them (stored in ytdc_disabled_topics).
+const BUILTIN_TOPICS = [
+  "Mechanical keyboards",
+  "Competitive programming",
+  "Vim / Neovim / Emacs",
+  "Terminal / CLI / Shell",
+  "Live coding interviews",
+  "DSA implementations",
+  "Live coding sessions",
+  "Framework tutorials",
+  "DSA courses & lectures",
+  "DevOps / infrastructure",
+  "Study / work with me",
+  "Coding challenges",
+  "ASMR coding",
+];
+
+function _saveTopics(disabledTopics, customKws) {
+  saveToStorage({
+    ytdc_disabled_topics: disabledTopics,
+    ytdc_custom_keywords: customKws.join(","),
+  }, { immediate: true }).catch(() => {});
+}
+
+let _disabledTopics = [];
+let _customKws = [];
+
+function renderTopicTags() {
+  _clearEl(detectTopicsEl);
+  // Built-in topics
+  BUILTIN_TOPICS.forEach(topic => {
+    const isOff = _disabledTopics.includes(topic);
+    const tag = document.createElement("span");
+    tag.className = "topic-tag builtin" + (isOff ? " disabled" : "");
+    tag.textContent = topic;
+    const btn = document.createElement("button");
+    btn.className = "tag-remove";
+    btn.textContent = isOff ? "+" : "\u00d7";
+    btn.title = isOff ? "Re-enable" : "Disable";
+    btn.addEventListener("click", () => {
+      if (isOff) {
+        _disabledTopics = _disabledTopics.filter(t => t !== topic);
+      } else {
+        _disabledTopics.push(topic);
+      }
+      _saveTopics(_disabledTopics, _customKws);
+      renderTopicTags();
+    });
+    tag.appendChild(btn);
+    detectTopicsEl.appendChild(tag);
+  });
+  // Custom keywords
+  _customKws.forEach((kw, i) => {
+    const tag = document.createElement("span");
+    tag.className = "topic-tag custom";
+    tag.textContent = kw;
+    const btn = document.createElement("button");
+    btn.className = "tag-remove";
+    btn.textContent = "\u00d7";
+    btn.title = "Remove";
+    btn.addEventListener("click", () => {
+      _customKws.splice(i, 1);
+      _saveTopics(_disabledTopics, _customKws);
+      renderTopicTags();
+    });
+    tag.appendChild(btn);
+    detectTopicsEl.appendChild(tag);
+  });
+}
+
 function initDetect() {
-  chrome.storage.local.get(["ytdc_autodetect", "ytdc_custom_keywords"], (result) => {
+  getSyncedSettings(["ytdc_autodetect", "ytdc_custom_keywords", "ytdc_disabled_topics"]).then((result) => {
     const on = result.ytdc_autodetect ?? true;
     setDetectToggleUI(on);
-    customKeywordsEl.value = result.ytdc_custom_keywords || "";
+    _disabledTopics = result.ytdc_disabled_topics || [];
+    // Lowercase keywords on load to match the content script's matching behavior
+    _customKws = (result.ytdc_custom_keywords || "")
+      .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+    renderTopicTags();
   });
 }
 
@@ -512,16 +694,20 @@ detectToggle.addEventListener("click", () => {
   const isOn = detectToggle.classList.contains("on");
   const next = !isOn;
   setDetectToggleUI(next);
-  chrome.storage.local.set({ ytdc_autodetect: next }).catch(() => {});
+  saveToStorage({ ytdc_autodetect: next }, { immediate: true });
+  if (next) sendMsg({ action: "rerunDetection" });
 });
 
-// Debounced save for the keywords textarea
-let _kwTimer = null;
-customKeywordsEl.addEventListener("input", () => {
-  clearTimeout(_kwTimer);
-  _kwTimer = setTimeout(() => {
-    chrome.storage.local.set({ ytdc_custom_keywords: customKeywordsEl.value }).catch(() => {});
-  }, 600);
+// Add custom keyword on Enter
+customKeywordInput.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  const val = customKeywordInput.value.trim().toLowerCase();
+  if (!val || _customKws.includes(val)) { customKeywordInput.value = ""; return; }
+  _customKws.push(val);
+  _saveTopics(_disabledTopics, _customKws);
+  customKeywordInput.value = "";
+  renderTopicTags();
 });
 
 // ─── Init ───
@@ -540,7 +726,12 @@ setTimeout(() => { engineGrid.classList.add("bars-ready"); }, 80);
 $("injectBtn").addEventListener("click", injectAndRetry);
 
 // ─── Power Toggle ───
+let _toggleBusy = false;
 toggle.addEventListener("click", () => {
+  if (_toggleBusy) return; // guard against rapid clicking
+  _toggleBusy = true;
+  setTimeout(() => { _toggleBusy = false; }, 400);
+
   const willActivate = !toggle.classList.contains("on");
   const action = willActivate ? "activate" : "deactivate";
 
@@ -565,12 +756,6 @@ engineCards.forEach((card) => {
     const newMode = card.dataset.mode;
     if (newMode === currentMode) return;
 
-    // If deep mode selected but not downloaded, show panel but don't switch engine
-    if (newMode === "deep" && !dfDownloaded) {
-      updateModeUI("deep", false);
-      return;
-    }
-
     // Persist to storage and update UI immediately (no content script needed)
     saveToStorage({ ytdc_mode: newMode });
     updateModeUI(newMode, dfDownloaded);
@@ -582,95 +767,20 @@ engineCards.forEach((card) => {
   });
 });
 
-// ─── DeepFilter Download ───
-// Sends directly to background service worker — works on any page, not just YouTube.
-dfBtn.addEventListener("click", () => {
-  dfBtn.disabled = true;
-  dfBtn.textContent = "DOWNLOADING...";
-  dfProgress.classList.add("show");
-  dfProgressLabel.textContent = "Downloading WASM engine...";
-  dfBarFill.style.width = "0%";
-  dfBarFill.style.background = "";
-
-  // Remove any existing progress listener before adding a new one
-  if (progressListener) {
-    chrome.runtime.onMessage.removeListener(progressListener);
-  }
-
-  // Track progress broadcasts from background
-  progressListener = function (msg) {
-    if (msg.type === "dfProgress") {
-      if (msg.stage === "wasm") {
-        dfProgressLabel.textContent = "Downloading WASM engine...";
-        dfBarFill.style.width = msg.progress * 0.3 + "%";
-      } else if (msg.stage === "model") {
-        dfProgressLabel.textContent = "Downloading model... " + msg.progress + "%";
-        dfBarFill.style.width = 30 + msg.progress * 0.7 + "%";
-      }
-    }
-  };
-  chrome.runtime.onMessage.addListener(progressListener);
-
-  // Direct to background — bypasses content script entirely
-  chrome.runtime.sendMessage({ action: "downloadDfDirect" }, (resp) => {
-    if (progressListener) {
-      chrome.runtime.onMessage.removeListener(progressListener);
-      progressListener = null;
-    }
-
-    if (resp && resp.ok) {
-      dfDownloaded = true;
-      // Show "Model loaded!" briefly, then collapse the progress bar
-      dfProgressLabel.textContent = "Model loaded!";
-      dfBarFill.style.width = "100%";
-      setTimeout(() => dfProgress.classList.remove("show"), 5000);
-      updateModeUI("deep", true);
-      // Persist download flag and new mode
-      saveToStorage({ ytdc_df_downloaded: true, ytdc_mode: "deep" });
-      // If on YouTube, tell the content script to import staged assets from
-      // storage into its IndexedDB, then switch to deep mode
-      sendMsg({ action: "importStaged" }, () => {
-        sendMsg({ action: "setMode", value: "deep" }, () => {
-          setTimeout(refreshState, 200);
-        });
-      });
-    } else {
-      dfBtn.disabled = false;
-      dfBtn.textContent = "RETRY DOWNLOAD";
-      dfProgressLabel.textContent =
-        (resp && resp.error) || "Download failed — check connection";
-      dfBarFill.style.width = "0%";
-      dfBarFill.style.background = "var(--danger)";
-    }
-  });
-});
-
-// ─── Delete Model ───
-// Sends directly to background — clears storage flags and staged transfer data.
-dfDeleteBtn.addEventListener("click", () => {
-  chrome.runtime.sendMessage({ action: "deleteDfDirect" }, (resp) => {
-    if (!resp || !resp.ok) return;
-    dfDownloaded = false;
-    saveToStorage({ ytdc_df_downloaded: false, ytdc_mode: "ml" });
-    updateModeUI("ml", false);
-    // Also tell content script to clean up its IndexedDB and switch mode
-    sendMsg({ action: "deleteDf" }, () => {
-      sendMsg({ action: "setMode", value: "ml" }, () => {
-        setTimeout(refreshState, 200);
-      });
-    });
-  });
-});
-
 // ─── Intensity Slider ───
+let _sliderMsgTimer = null;
 intensitySlider.addEventListener("input", () => {
   const val = parseInt(intensitySlider.value);
   intensityVal.textContent = val;
-  saveToStorage({ ytdc_intensity: val });
-  sendMsg({ action: "setIntensity", value: val });
   presetBtns.forEach((btn) => {
     btn.classList.toggle("active", parseInt(btn.dataset.val) === val);
   });
+  // Debounce storage write + content script message to avoid flooding during drag
+  clearTimeout(_sliderMsgTimer);
+  _sliderMsgTimer = setTimeout(() => {
+    saveToStorage({ ytdc_intensity: val });
+    sendMsg({ action: "setIntensity", value: val });
+  }, 50);
 });
 
 // ─── Presets ───
@@ -689,9 +799,9 @@ presetBtns.forEach((btn) => {
 // ─── Bug Report ───
 bugReportBtn.addEventListener("click", () => {
   const engineNames = { eq: "EQ Lite", ml: "RNNoise", deep: "DeepFilterNet3" };
-  const subject = encodeURIComponent("YT DeClicker v3 — Bug Report");
+  const subject = encodeURIComponent("Ripple Wave v3 — Bug Report");
   const body = encodeURIComponent(
-    "Bug Report — YT DeClicker v3\n" +
+    "Bug Report — Ripple Wave v3\n" +
     "─────────────────────────────\n" +
     "Engine:    " + (engineNames[currentMode] || currentMode) + "\n" +
     "Intensity: " + intensitySlider.value + "\n" +
@@ -703,3 +813,4 @@ bugReportBtn.addEventListener("click", () => {
   );
   window.open("mailto:harshkumar09104@gmail.com?subject=" + subject + "&body=" + body);
 });
+

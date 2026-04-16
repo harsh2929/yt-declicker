@@ -1,25 +1,42 @@
-// background.js — Service worker for YT DeClicker v3
+// background.js — Service worker for Ripple Wave v3
 //
-// Download architecture:
-//   proxyDownload  — called by content script on YouTube (uses tab for progress)
-//   downloadDfDirect — called by popup from any page (broadcasts progress to popup)
-//
-// Settings are stored in chrome.storage.local so popup can read/write them
-// without needing a content script (i.e. even when not on YouTube).
+// Responsibilities:
+//   1. Check GitHub releases for updates.
+//   2. Clean up legacy DeepFilter download state from older builds.
 
-const GITHUB_REPO   = "harsh2929/yt-declicker";
+const GITHUB_REPO   = "harsh2929/ripple-wave";
 const RELEASES_URL  = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
 const RELEASES_PAGE = `https://github.com/${GITHUB_REPO}/releases/latest`;
+const LEGACY_DF_STORAGE_KEYS = [
+  "_df3_wasm_transfer",
+  "_df3_model_transfer",
+  "ytdc_df_staged",
+  "ytdc_df_downloaded",
+];
 
 // ─── Update Check ─────────────────────────────────────────────────────────────
-// Runs once per browser session (on service worker startup).
-// Compares manifest version with the latest GitHub release tag.
-// Stores result in chrome.storage.local so the popup can show a banner instantly.
-chrome.runtime.onInstalled.addListener(checkForUpdate);
-checkForUpdate(); // also check on SW wake
+// Runs once per browser session (on worker startup) and after installs.
+chrome.runtime.onInstalled.addListener(() => {
+  checkForUpdate(true);
+  clearLegacyDfStorage();
+});
+chrome.runtime.onStartup.addListener(() => {
+  checkForUpdate(false);
+  clearLegacyDfStorage();
+});
+checkForUpdate(false); // also check on SW wake (throttled)
+// Legacy cleanup runs from the lifecycle listeners above — no need to repeat
+// it at top-level since onInstalled/onStartup always fire on SW wake.
 
-async function checkForUpdate() {
+async function checkForUpdate(force) {
   try {
+    // Throttle: skip if checked within the last 6 hours (unless forced by onInstalled)
+    if (!force) {
+      const { ytdc_last_update_check } = await chrome.storage.local.get("ytdc_last_update_check");
+      if (ytdc_last_update_check && Date.now() - ytdc_last_update_check < 6 * 60 * 60 * 1000) return;
+    }
+    await chrome.storage.local.set({ ytdc_last_update_check: Date.now() });
+
     const { version } = chrome.runtime.getManifest();
     const resp = await fetch(RELEASES_URL, {
       headers: { Accept: "application/vnd.github+json" },
@@ -40,7 +57,7 @@ async function checkForUpdate() {
   }
 }
 
-// Returns >0 if a > b, <0 if a < b, 0 if equal  (semver without pre-release)
+// Returns >0 if a > b, <0 if a < b, 0 if equal (semver without pre-release)
 function compareVersions(a, b) {
   const pa = a.split(".").map(Number);
   const pb = b.split(".").map(Number);
@@ -51,138 +68,49 @@ function compareVersions(a, b) {
   return 0;
 }
 
-const DF3_CDN = "https://cdn.mezon.ai/AI/models/datas/noise_suppression/deepfilternet3";
-const DF3_WASM_URL  = `${DF3_CDN}/v2/pkg/df_bg.wasm`;
-const DF3_MODEL_URL = `${DF3_CDN}/v2/models/DeepFilterNet3_onnx.tar.gz`;
-const ALLOWED_ORIGINS = ["https://cdn.mezon.ai"];
-
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  let promise;
-
-  if (msg.action === "proxyDownload") {
-    // Original path: content script on YouTube triggers this
-    promise = handleProxyDownload(msg, sender.tab?.id);
-
-  } else if (msg.action === "downloadDfDirect") {
-    // New path: popup (any page) triggers this; progress goes to popup via broadcast
-    promise = handleDfDirectDownload();
-
-  } else if (msg.action === "deleteDfDirect") {
-    // Mark deleted + clear staged data so content script won't re-import on next load
-    promise = chrome.storage.local
-      .set({ ytdc_df_downloaded: false })
-      .then(() => chrome.storage.local.remove([
-        "_df3_wasm_transfer", "_df3_model_transfer", "ytdc_df_staged"
-      ]))
-      .then(() => ({ ok: true }));
-
-  } else {
-    return false; // not our message
-  }
-
-  promise
-    .then(result => sendResponse(result))
-    .catch(e    => sendResponse({ ok: false, error: e.message }));
-  return true; // keep channel open for async response
-});
-
-// ─── Shared download + base64-encode helper ───────────────────────────────────
-// tabId: if provided, also sends progress to the YouTube tab (for content script path)
-// progressCb: called with (pct) for each chunk received
-async function downloadToStorage(url, storageKey, tabId, progressCb) {
-  const parsedUrl = new URL(url);
-  if (!ALLOWED_ORIGINS.some(o => parsedUrl.origin === o)) {
-    throw new Error("URL not in allowed origins: " + parsedUrl.origin);
-  }
-
-  const resp = await fetchWithRetry(url, 3);
-  const contentLength = parseInt(resp.headers.get("content-length") || "0");
-  const reader = resp.body?.getReader();
-
-  let bytes;
-  if (reader && contentLength > 0) {
-    let received = 0;
-    const chunks = [];
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      received += value.length;
-      const pct = Math.round((received / contentLength) * 100);
-      if (progressCb) progressCb(pct);
-      // Content-script path: also forward to the YouTube tab
-      if (tabId) {
-        try {
-          chrome.tabs.sendMessage(tabId, {
-            type: "downloadProgress",
-            requestId: storageKey,
-            progress: pct,
-          });
-        } catch (e) {}
-      }
-    }
-    bytes = new Uint8Array(received);
-    let pos = 0;
-    for (const chunk of chunks) { bytes.set(chunk, pos); pos += chunk.length; }
-  } else {
-    bytes = new Uint8Array(await resp.arrayBuffer());
-  }
-
-  // Base64-encode in 32 KB slices to avoid call-stack overflow
-  const CHUNK = 32768;
-  let b64str = "";
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    b64str += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CHUNK, bytes.length)));
-  }
-  await chrome.storage.local.set({ [storageKey]: btoa(b64str) });
-  return { ok: true, storageKey, size: bytes.length };
-}
-
-// ─── Original proxy-download path (content script → background) ──────────────
-async function handleProxyDownload(msg, tabId) {
-  const { url, storageKey, requestId } = msg;
-  return downloadToStorage(url, storageKey, tabId, null);
-}
-
-// ─── Direct download path (popup → background) ───────────────────────────────
-async function handleDfDirectDownload() {
-  // WASM file — progress 0–30% in popup bar
-  await downloadToStorage(DF3_WASM_URL, "_df3_wasm_transfer", null, (pct) => {
-    broadcastToPopup({ type: "dfProgress", stage: "wasm", progress: pct });
-  });
-
-  // Model file — progress 30–100% in popup bar
-  await downloadToStorage(DF3_MODEL_URL, "_df3_model_transfer", null, (pct) => {
-    broadcastToPopup({ type: "dfProgress", stage: "model", progress: pct });
-  });
-
-  // Mark as staged so content script imports to IndexedDB on next YouTube load
-  await chrome.storage.local.set({
-    ytdc_df_downloaded: true,
-    ytdc_df_staged: true,
-  });
-
-  return { ok: true };
-}
-
 function broadcastToPopup(msg) {
   try { chrome.runtime.sendMessage(msg).catch(() => {}); } catch (e) {}
 }
 
-// ─── Fetch with exponential-backoff retry ─────────────────────────────────────
-async function fetchWithRetry(url, retries) {
-  let lastError;
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      const resp = await fetch(url);
-      if (resp.ok) return resp;
-      lastError = new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-    } catch (e) {
-      lastError = e;
-    }
-    if (attempt < retries - 1) {
-      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
-    }
+// ─── Keyboard Shortcut Toggle ─────────────────────────────────────────────────
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "toggle-filter") return;
+  const { ytdc_active } = await chrome.storage.local.get("ytdc_active");
+  const next = !ytdc_active;
+  await chrome.storage.local.set({ ytdc_active: next });
+  // Sync to chrome.storage.sync if available
+  try { await chrome.storage.sync?.set({ ytdc_active: next }); } catch (_) {}
+  updateBadge(next);
+  // Notify content script on active tab
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id) {
+    chrome.tabs.sendMessage(tab.id, { action: next ? "activate" : "deactivate" }).catch(() => {});
   }
-  throw lastError;
+});
+
+// ─── Badge State ──────────────────────────────────────────────────────────────
+function updateBadge(isActive) {
+  chrome.action.setBadgeText({ text: isActive ? "ON" : "" });
+  chrome.action.setBadgeBackgroundColor({ color: isActive ? "#4ade80" : "#6b7280" });
+  chrome.action.setBadgeTextColor({ color: isActive ? "#052e16" : "#ffffff" });
+}
+
+// Restore badge on startup
+chrome.storage.local.get("ytdc_active", (result) => {
+  updateBadge(!!result.ytdc_active);
+});
+
+// Keep badge in sync when storage changes (from popup or content script)
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local" && changes.ytdc_active !== undefined) {
+    updateBadge(!!changes.ytdc_active.newValue);
+  }
+});
+
+async function clearLegacyDfStorage() {
+  try {
+    await chrome.storage.local.remove(LEGACY_DF_STORAGE_KEYS);
+  } catch (e) {
+    // Ignore storage cleanup failures during worker startup.
+  }
 }

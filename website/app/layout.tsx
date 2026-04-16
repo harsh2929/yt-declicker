@@ -21,46 +21,50 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://ytdeclicker.com'),
+  metadataBase: new URL('https://ripplewave.app'),
   title: {
-    default: 'YT DeClicker — YouTube Keyboard Click Remover Chrome Extension',
-    template: '%s | YT DeClicker',
+    default: 'Ripple Wave — Keyboard Click Remover for YouTube, Twitch, Reddit & More',
+    template: '%s | Ripple Wave',
   },
   description:
-    'YT DeClicker is a free Chrome extension that removes keyboard clicks and typing noise from YouTube videos in real-time. Three AI engines: EQ Lite, RNNoise ML, and DeepFilterNet3.',
+    'Ripple Wave is a free Chrome extension that removes keyboard clicks and typing noise from YouTube, Reddit, X/Twitter, Twitch, Facebook, LinkedIn, and Kick videos in real-time. Three AI engines: EQ Lite, RNNoise ML, and DeepFilterNet3.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'YT DeClicker — YouTube Keyboard Click Remover Chrome Extension',
+    title: 'Ripple Wave — Keyboard Click Remover for YouTube, Twitch, Reddit & More',
     description:
-      'Free Chrome extension for real-time YouTube noise removal. Removes keyboard clicks, typing noise, and mechanical key sounds instantly.',
-    url: 'https://ytdeclicker.com',
-    siteName: 'YT DeClicker',
+      'Free Chrome extension for real-time noise removal on YouTube, Reddit, X, Twitch, Facebook, LinkedIn, and Kick. Removes keyboard clicks, typing noise, and mechanical key sounds instantly.',
+    url: 'https://ripplewave.app',
+    siteName: 'Ripple Wave',
     type: 'website',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'YT DeClicker — silence keyboard noise on YouTube',
+        alt: 'Ripple Wave — silence keyboard noise on YouTube, Twitch, Reddit & more',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'YT DeClicker — YouTube Keyboard Click Remover',
+    title: 'Ripple Wave — Keyboard Click Remover for YouTube, Twitch, Reddit & More',
     description:
-      'Free Chrome extension for real-time YouTube noise removal.',
+      'Free Chrome extension for real-time noise removal on 7 platforms.',
     images: ['/og-image.png'],
   },
   keywords: [
-    'YouTube keyboard click remover',
+    'keyboard click remover Chrome extension',
     'remove keyboard noise YouTube',
     'YouTube noise removal Chrome extension',
+    'Twitch keyboard noise filter',
+    'Reddit typing noise remover',
     'keyboard click filter',
     'mechanical keyboard noise removal',
-    'typing noise filter YouTube',
+    'typing noise filter YouTube Twitch Reddit',
     'DeepFilterNet3 Chrome extension',
     'RNNoise browser',
+    'Facebook LinkedIn Kick noise filter',
+    'X Twitter keyboard click remover',
   ],
 }
 

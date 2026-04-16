@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 
-const GITHUB_URL = 'https://github.com/harsh2929/yt-declicker'
+const GITHUB_URL = 'https://github.com/harsh2929/ripple-wave'
 
 // Words that cycle in the hero headline
 const TYPING_WORDS = ['CLACK', 'CLICK', 'TIP TAP', 'THUD', 'CLATTER', 'RAT-TAT', 'TAP TAP', 'TICK TACK']
@@ -210,10 +210,10 @@ function Nav() {
         {/* Logo */}
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 bg-yellow font-mono font-black text-[11px] flex items-center justify-center border-2 border-ink rounded-sm shadow-[2px_2px_0_#111]">
-            YD
+            RW
           </div>
           <span className="font-black text-[17px] tracking-tight leading-none">
-            YT De<span className="bg-yellow px-1 border border-ink">CLICKER</span>
+            RIPPLE <span className="bg-yellow px-1 border border-ink">WAVE</span>
           </span>
         </div>
 
@@ -333,9 +333,9 @@ function Hero() {
         <p className="mt-8 mb-8 text-[#444] max-w-[540px] mx-auto leading-relaxed font-medium"
           style={{ fontSize: 'clamp(15px, 1.8vw, 19px)' }}
         >
-          YT DeClicker removes keyboard clicks from YouTube in real-time —
-          straight in your browser. Three engines, zero latency compromise.
-          Your ears deserve better.
+          Ripple Wave removes keyboard clicks from YouTube, Twitch, Reddit, X,
+          Facebook, LinkedIn & Kick — straight in your browser. Three engines,
+          zero latency compromise. Your ears deserve better.
         </p>
 
         {/* Keyboard visual */}
@@ -390,7 +390,7 @@ function Hero() {
 // ─────────────────────────────────────────────────────────────────────────────
 function Marquee() {
   const txt =
-    'KEYBOARD CLICKS • MECHANICAL NOISE • TYPING SOUNDS • KEY CLATTER • CLICK SUPPRESSION • REAL-TIME AI • YOUTUBE AUDIO • '
+    'KEYBOARD CLICKS • MECHANICAL NOISE • TYPING SOUNDS • KEY CLATTER • CLICK SUPPRESSION • REAL-TIME AI • 7 PLATFORMS • YOUTUBE • TWITCH • REDDIT • X • FACEBOOK • LINKEDIN • KICK • '
   const block = txt.repeat(4)
 
   return (
@@ -406,15 +406,120 @@ function Marquee() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MISSION STATEMENT — the snarky "making the world a better place" bit
+// ─────────────────────────────────────────────────────────────────────────────
+const GRANDIOSE_CLAIMS = [
+  'solving the Riemann hypothesis',
+  'achieving artificial general intelligence',
+  'disrupting the blockchain ecosystem',
+  'colonizing Mars by 2027',
+  'democratizing quantum computing',
+  'building the metaverse',
+  'reinventing human-AI synergy',
+]
+
+const NOISE_WORDS = [
+  'keyboard ASMR',
+  'click-clack-clonk',
+  'mechanical thunder',
+  'Cherry MX violence',
+  'background clatter',
+  'someone\'s Blue switches',
+  'coworking space typing',
+]
+
+function StrikethroughCycler() {
+  const [idx, setIdx] = useState(0)
+  const [leaving, setLeaving] = useState(false)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setLeaving(true)
+      setTimeout(() => {
+        setIdx(i => (i + 1) % GRANDIOSE_CLAIMS.length)
+        setLeaving(false)
+      }, 200)
+    }, 2400)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <span
+      className="inline-block"
+      style={{
+        transition: 'opacity 0.2s ease, transform 0.2s ease',
+        opacity: leaving ? 0 : 0.5,
+        transform: leaving ? 'translateY(-6px)' : 'translateY(0)',
+      }}
+    >
+      <s>{GRANDIOSE_CLAIMS[idx]}</s>
+    </span>
+  )
+}
+
+function NoiseCycler() {
+  const [idx, setIdx] = useState(0)
+  const [leaving, setLeaving] = useState(false)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setLeaving(true)
+      setTimeout(() => {
+        setIdx(i => (i + 1) % NOISE_WORDS.length)
+        setLeaving(false)
+      }, 180)
+    }, 2400)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <span
+      className="inline-block text-yellow"
+      style={{
+        transition: 'opacity 0.18s ease, transform 0.18s ease',
+        opacity: leaving ? 0 : 1,
+        transform: leaving ? 'translateY(5px)' : 'translateY(0)',
+        minWidth: '10ch',
+      }}
+    >
+      {NOISE_WORDS[idx]}
+    </span>
+  )
+}
+
+function MissionStatement() {
+  const { ref, visible } = useReveal()
+
+  return (
+    <section ref={ref} className="bg-ink border-b-[3px] border-[#222] py-10 px-5">
+      <div className={`max-w-3xl mx-auto text-center reveal ${visible ? 'visible' : ''}`}>
+        <p
+          className="font-black leading-snug tracking-tight text-white"
+          style={{ fontSize: 'clamp(20px, 3.5vw, 32px)' }}
+        >
+          Making the world a better place by{' '}
+          <StrikethroughCycler />{' '}
+          <br className="hidden sm:block" />
+          silencing <span className="mission-cursor"><NoiseCycler /></span>
+        </p>
+        <p className="font-mono text-[11px] text-[#555] tracking-[2px] mt-5">
+          NO PITCH DECK. NO SERIES A. JUST A GUY WHO GOT TIRED OF HEARING YOUR KEYBOARD.
+        </p>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // STATS STRIP
 // ─────────────────────────────────────────────────────────────────────────────
 function StatsStrip() {
   const { ref, visible } = useReveal()
 
   const stats = [
-    { value: '~0ms', label: 'EQ LATENCY' },
+    { value: '7',    label: 'PLATFORMS' },
     { value: '3',    label: 'FILTER ENGINES' },
-    { value: '48K',  label: 'Hz SAMPLE RATE' },
+    { value: '~0ms', label: 'EQ LATENCY' },
     { value: '100%', label: 'LOCAL PROCESSING' },
   ]
 
@@ -448,7 +553,7 @@ function HowItWorks() {
       icon: '▶',
       title: 'VIDEO PLAYS',
       body:
-        'YouTube loads your video. The raw audio stream passes through your browser before reaching your speakers — just like always.',
+        'YouTube, Twitch, Reddit, X, Facebook, LinkedIn, or Kick loads your video. The raw audio stream passes through your browser before reaching your speakers — just like always.',
       bg: 'bg-cream',
     },
     {
@@ -456,7 +561,7 @@ function HowItWorks() {
       icon: '🎛',
       title: 'AUDIO INTERCEPTED',
       body:
-        'DeClicker hooks into the Web Audio API and silently inserts a real-time filter chain between YouTube and your audio output.',
+        'Ripple Wave hooks into the Web Audio API and silently inserts a real-time filter chain between the video player and your audio output.',
       bg: 'bg-[#FFF9E0]',
     },
     {
@@ -483,21 +588,34 @@ function HowItWorks() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {steps.map((step, i) => (
-            <div
-              key={step.num}
-              className={`neo-card ${step.bg} p-8 reveal ${visible ? 'visible' : ''}`}
-              style={{ transitionDelay: `${i * 140}ms` }}
-            >
+            <React.Fragment key={step.num}>
               <div
-                className="font-mono font-black leading-none mb-5 select-none"
-                style={{ fontSize: '80px', color: 'rgba(17,17,17,0.07)' }}
+                className={`neo-card ${step.bg} p-8 reveal ${visible ? 'visible' : ''}`}
+                style={{ transitionDelay: `${i * 140}ms` }}
               >
-                {step.num}
+                <div
+                  className="font-mono font-black leading-none mb-5 select-none"
+                  style={{ fontSize: '80px', color: 'rgba(17,17,17,0.07)' }}
+                >
+                  {step.num}
+                </div>
+                <div className="text-5xl mb-4 feature-icon-wrap" aria-hidden="true">{step.icon}</div>
+                <h3 className="font-mono font-black text-[17px] tracking-[1px] mb-3">{step.title}</h3>
+                <p className="text-[#444] leading-relaxed text-[14px]">{step.body}</p>
               </div>
-              <div className="text-5xl mb-4" aria-hidden="true">{step.icon}</div>
-              <h3 className="font-mono font-black text-[17px] tracking-[1px] mb-3">{step.title}</h3>
-              <p className="text-[#444] leading-relaxed text-[14px]">{step.body}</p>
-            </div>
+            </React.Fragment>
+          ))}
+        </div>
+        {/* Animated step connectors visible on md+ */}
+        <div className="hidden md:flex justify-center gap-2 mt-6">
+          {['VIDEO', '→', 'FILTER', '→', 'CLEAN'].map((label, i) => (
+            <span
+              key={i}
+              className={`font-mono font-black text-[11px] tracking-[2px] ${i % 2 === 1 ? 'step-connector text-[#aaa]' : 'text-ink'}`}
+              style={i % 2 === 1 ? { animationDelay: `${i * 300}ms` } : undefined}
+            >
+              {label}
+            </span>
           ))}
         </div>
       </div>
@@ -557,7 +675,7 @@ function Engines() {
         { label: '⚡ Reaction Speed',   value: 72,  lo: 'Slow', hi: 'Instant',  caption: 'Quick enough'},
         { label: '🎯 Noise Removal',    value: 100, lo: 'Light', hi: 'Max',     caption: 'ABSOLUTE MAX'},
         { label: '🔋 Battery Friendly', value: 50,  lo: 'Heavy', hi: 'Tiny',    caption: 'Worth it'    },
-        { label: '📦 Setup Effort',     value: 65,  lo: 'Hard',  hi: 'None',    caption: '1 download'  },
+        { label: '📦 Setup Effort',     value: 92,  lo: 'Hard',  hi: 'None',    caption: 'Bundled'     },
       ],
     },
   ]
@@ -575,20 +693,23 @@ function Engines() {
             PICK YOUR<br />
             <span className="text-yellow">ENGINE</span>
           </h2>
-          <p className="text-[#888] font-mono text-[13px] mt-5 tracking-wide">Tap the one that matches your vibe</p>
+          <p className="text-[#888] font-mono text-[13px] mt-5 tracking-wide">
+            Three ways to tell someone&apos;s Cherry MX Blues to shut up
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {engines.map((e, i) => (
             <div
               key={e.id}
-              className={`neo-card-lift reveal ${visible ? 'visible' : ''} relative overflow-hidden flex flex-col`}
+              className={`neo-card-lift engine-glow reveal ${visible ? 'visible' : ''} relative overflow-hidden flex flex-col`}
               style={{
+                '--glow-color': e.accentColor,
                 background: e.bg,
                 border: `3px solid ${e.accentColor}`,
                 boxShadow: `7px 7px 0 ${e.accentColor}`,
                 transitionDelay: `${i * 130}ms`,
-              }}
+              } as React.CSSProperties}
             >
               {/* Top strip */}
               <div className="px-6 pt-6 pb-5">
@@ -675,13 +796,14 @@ function Features() {
 
   const items = [
     { icon: '🔒', title: '100% PRIVATE',        bg: '#FFF9E0', desc: 'All processing happens inside your browser tab. Your audio never touches any server — ever.'                                },
-    { icon: '▶',  title: 'ANY YOUTUBE VIDEO',   bg: '#F0FFF4', desc: 'Auto-hooks into the active video element. No manual setup, no URL restrictions, no exceptions.'                           },
+    { icon: '▶',  title: '7 PLATFORMS',         bg: '#F0FFF4', desc: 'Works on YouTube, Twitch, Reddit, X/Twitter, Facebook, LinkedIn, and Kick. Auto-hooks into the active video element.'  },
     { icon: '🎚', title: 'TUNABLE INTENSITY',   bg: '#F0FAFF', desc: 'Dial suppression from 0 to 100%. Subtle filtering or full nuclear option — a single slider.'                             },
-    { icon: '⚡', title: 'AUTO-RECONNECTS',     bg: '#FBF0FF', desc: 'Survives YouTube\'s client-side navigation. The hook persists across video changes without a page reload.'               },
-    { icon: '💾', title: 'SMART CACHING',       bg: '#FFF0F5', desc: 'DeepFilter\'s 2 MB model downloads exactly once and lives in IndexedDB. No repeat downloads on revisit.'                },
+    { icon: '⚡', title: 'AUTO-RECONNECTS',     bg: '#FBF0FF', desc: 'Survives SPA navigation on all 7 platforms. The hook persists across video changes without a page reload.'               },
+    { icon: '💾', title: 'SMART CACHING',       bg: '#FFF0F5', desc: 'DeepFilter ships inside the extension and is cached in IndexedDB on first use for fast reconnects.'                },
     { icon: '🌓', title: 'DARK & LIGHT MODE',   bg: '#F5F0FF', desc: 'The popup UI adapts to your system theme. Looks polished in both light and dark.'                                        },
-    { icon: '🎛', title: 'PRESET MODES',        bg: '#FFF5E0', desc: 'EQ engine ships with LIGHT / MED / HEAVY / NUKE presets — tap once to jump to a calibrated setting.'                    },
-    { icon: '📦', title: 'SMART DOWNLOADS',     bg: '#F0FFFA', desc: 'Large WASM and model files transfer via a service-worker proxy that bypasses YouTube\'s strict CSP rules seamlessly.'    },
+    { icon: '🎛', title: 'PRESET MODES',        bg: '#FFF5E0', desc: 'LIGHT / MED / HEAVY / NUKE presets work across all three engines — tap once to jump to a calibrated setting.'            },
+    { icon: '⌨',  title: 'KEYBOARD SHORTCUT',  bg: '#F0F5FF', desc: 'Toggle the filter with Alt+Shift+R without opening the popup. Customizable in chrome://extensions/shortcuts.'            },
+    { icon: '📦', title: 'SELF-CONTAINED BUILD', bg: '#F0FFFA', desc: 'DeepFilter\'s Wasm and model are packaged with Ripple Wave, so the release build stays self-contained at runtime.'    },
   ]
 
   return (
@@ -694,6 +816,9 @@ function Features() {
           >
             BUILT RIGHT
           </h2>
+          <p className="font-mono text-[12px] text-[#888] mt-4 tracking-wide">
+            No AI chatbot. No subscription. No &ldquo;sign up to continue.&rdquo; Just click-murder.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -703,7 +828,7 @@ function Features() {
               className={`neo-card neo-card-lift reveal ${visible ? 'visible' : ''} p-6`}
               style={{ background: item.bg, transitionDelay: `${i * 70}ms` }}
             >
-              <div className="text-4xl mb-4" aria-hidden="true">{item.icon}</div>
+              <div className="text-4xl mb-4 feature-icon-wrap" aria-hidden="true">{item.icon}</div>
               <h3 className="font-mono font-black text-[12px] tracking-[1px] mb-2">{item.title}</h3>
               <p className="text-[#555] text-[13px] leading-relaxed">{item.desc}</p>
             </div>
@@ -726,7 +851,7 @@ function PrivacyCallout() {
         className={`max-w-5xl mx-auto neo-card bg-yellow p-10 md:p-14 text-center reveal ${visible ? 'visible' : ''}`}
         style={{ boxShadow: '10px 10px 0 #FFE500' }}
       >
-        <div className="text-5xl mb-5">🔒</div>
+        <div className="text-5xl mb-5 shield-icon inline-block">🔒</div>
         <h2 className="font-black tracking-[-2px] mb-4" style={{ fontSize: 'clamp(28px, 5vw, 52px)' }}>
           YOUR AUDIO NEVER LEAVES<br />YOUR BROWSER.
         </h2>
@@ -734,6 +859,9 @@ function PrivacyCallout() {
           No cloud processing. No microphone access. No telemetry. The extension
           intercepts the existing audio stream inside your tab — nothing is
           recorded, transmitted, or stored anywhere outside your own device.
+        </p>
+        <p className="font-mono text-[11px] text-[#777] mt-4">
+          We literally cannot hear you. Even if we wanted to. Which we don&apos;t.
         </p>
         <div className="flex flex-wrap gap-4 justify-center mt-8">
           {['NO SERVERS', 'NO ACCOUNT', 'NO MICROPHONE', 'NO TRACKING'].map(badge => (
@@ -745,6 +873,275 @@ function PrivacyCallout() {
               ✓ {badge}
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRICING — three joke tiers, all $0
+// ─────────────────────────────────────────────────────────────────────────────
+const KOFI_URL = 'https://ko-fi.com/harsh2929'
+
+const SNARKY_CTA_LINES = [
+  'try vibecoding this for free, mr. twitter influencer',
+  'go ahead, wrap it in electron and sell it for $99',
+  'put it in your SaaS starter kit, we dare you',
+  'screenshot this for your "built in a weekend" tweet',
+  'add it to your $497 course as a "bonus tool"',
+  'ship it on Product Hunt as your own, king',
+  'slap a waitlist on it and call it a startup',
+]
+
+function SnarkyCTACycler() {
+  const [idx, setIdx] = useState(0)
+  const [leaving, setLeaving] = useState(false)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setLeaving(true)
+      setTimeout(() => {
+        setIdx(i => (i + 1) % SNARKY_CTA_LINES.length)
+        setLeaving(false)
+      }, 200)
+    }, 3200)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <span
+      className="inline-block"
+      style={{
+        transition: 'opacity 0.2s ease, transform 0.2s ease',
+        opacity: leaving ? 0 : 1,
+        transform: leaving ? 'translateY(-4px)' : 'translateY(0)',
+      }}
+    >
+      {SNARKY_CTA_LINES[idx]}
+    </span>
+  )
+}
+
+function Pricing() {
+  const { ref, visible } = useReveal()
+
+  const tiers = [
+    {
+      name: 'HOBBIT',
+      emoji: '🧝',
+      tagline: 'One does not simply tolerate keyboard noise',
+      color: '#30D158',
+      tierClass: 'tier-hobbit',
+      features: [
+        'Silence clicks in the Shire (YouTube)',
+        'Gandalf-level EQ filtering',
+        'Precious audio — zero latency',
+        'No ring required. No fellowship either.',
+        'Works on second breakfast streams',
+      ],
+    },
+    {
+      name: 'JOHN WICK',
+      emoji: '🔫',
+      tagline: 'You clicked on the wrong video.',
+      color: '#FFE500',
+      popular: true,
+      tierClass: 'tier-wick',
+      features: [
+        'Eliminates noise with extreme prejudice',
+        'RNNoise neural net — trained on 1M keyboards',
+        'Three engines. Three rules. No survivors.',
+        'Continental-grade privacy (no servers)',
+        'Yeah, I\'m thinking I\'m filtering.',
+      ],
+    },
+    {
+      name: 'THANOS',
+      emoji: '🫰',
+      tagline: 'One snap. Half the frequencies gone.',
+      color: '#BF5AF2',
+      tierClass: 'tier-thanos',
+      features: [
+        'DeepFilterNet3 — perfectly balanced audio',
+        'Inevitable noise removal across 7 platforms',
+        'Reality stone not included (WASM instead)',
+        'I am... the filter. *snap*',
+        'Your keyboard clicks did not spark joy.',
+      ],
+    },
+  ]
+
+  return (
+    <section id="pricing" className="py-24 px-5 bg-cream" ref={ref}>
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-16">
+          <div className="ticker-tag mx-auto mb-4 w-fit">ENTERPRISE PRICING</div>
+          <h2
+            className="font-black leading-none tracking-[-3px]"
+            style={{ fontSize: 'clamp(38px, 6vw, 68px)' }}
+          >
+            PICK YOUR<br />
+            <span className="bg-yellow px-2 border-[3px] border-ink inline-block" style={{ boxShadow: '5px 5px 0 #111' }}>
+              WEAPON
+            </span>
+          </h2>
+          <p className="font-mono text-[12px] text-[#888] mt-5 tracking-wide">
+            all plans include: everything. because they&apos;re all free. obviously.
+          </p>
+        </div>
+
+        {/* Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+          {tiers.map((tier, i) => (
+            <div
+              key={tier.name}
+              className={`neo-card neo-card-lift reveal ${visible ? 'visible' : ''} flex flex-col ${tier.tierClass || ''}`}
+              style={{
+                background: 'white',
+                border: `3px solid ${tier.color}`,
+                boxShadow: `7px 7px 0 ${tier.color}`,
+                transitionDelay: `${i * 130}ms`,
+              }}
+            >
+              {/* Popular badge */}
+              {tier.popular && (
+                <div
+                  className="text-center font-mono font-black text-[10px] tracking-[2px] py-1.5 border-b-[3px] border-ink"
+                  style={{ background: tier.color }}
+                >
+                  MOST POPULAR (IT&apos;S ALL FREE THOUGH)
+                </div>
+              )}
+
+              <div className="p-6 flex flex-col flex-1">
+                {/* Tier header */}
+                <div className="text-4xl mb-2 relative">
+                  <span>{tier.emoji}</span>
+                  {tier.tierClass === 'tier-thanos' && (
+                    <>
+                      {[...Array(6)].map((_, p) => (
+                        <span
+                          key={p}
+                          className="snap-dust absolute text-[8px] pointer-events-none"
+                          style={{
+                            left: `${10 + p * 12}%`,
+                            top: '20%',
+                            opacity: 0,
+                            animationDelay: `${p * 0.08}s`,
+                          }}
+                        >
+                          {['✦', '◆', '●', '■', '▲', '✦'][p]}
+                        </span>
+                      ))}
+                    </>
+                  )}
+                </div>
+                <h3 className="font-mono font-black text-[22px] tracking-[2px] mb-1">{tier.name}</h3>
+                <p className="font-mono text-[12px] text-[#777] mb-5 italic">{tier.tagline}</p>
+
+                {/* Price — stamp slam animation */}
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="font-black text-[56px] leading-none tracking-tight price-stamp">$0</span>
+                  <span className="font-mono text-[13px] text-[#999]">/ forever</span>
+                </div>
+
+                {/* Features */}
+                <ul className="flex-1 space-y-3 mb-6">
+                  {tier.features.map((f, j) => (
+                    <li key={j} className="flex gap-2 text-[13px] text-[#444] leading-relaxed">
+                      <span style={{ color: tier.color }} className="font-black mt-0.5 shrink-0">&#10003;</span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* CTA — Ko-fi */}
+                <a
+                  href={KOFI_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="neo-btn text-center w-full py-3 text-[13px] tracking-wide"
+                  style={{
+                    background: tier.color,
+                    color: '#111',
+                    borderColor: '#111',
+                    boxShadow: '4px 4px 0 #111',
+                  }}
+                >
+                  GET FOR $0 (OR BUY ME A COFFEE)
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Snarky rotating CTA */}
+        <div className="text-center mb-10">
+          <p
+            className="font-mono font-black tracking-[1px] text-[#888] leading-relaxed"
+            style={{ fontSize: 'clamp(12px, 1.5vw, 15px)' }}
+          >
+            <SnarkyCTACycler />
+          </p>
+        </div>
+
+        {/* "Steal my code" neon CTA */}
+        <div className="flex justify-center">
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="neon-cta relative group block text-center px-10 py-6 border-[3px] rounded-sm"
+            style={{
+              borderColor: '#ff00ff',
+              background: '#0a0a0a',
+              boxShadow: '0 0 20px rgba(255,0,255,0.3), 0 0 60px rgba(255,0,255,0.1), inset 0 0 20px rgba(255,0,255,0.05)',
+              transition: 'box-shadow 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 30px rgba(255,0,255,0.5), 0 0 80px rgba(255,0,255,0.2), inset 0 0 30px rgba(255,0,255,0.1)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 20px rgba(255,0,255,0.3), 0 0 60px rgba(255,0,255,0.1), inset 0 0 20px rgba(255,0,255,0.05)'
+            }}
+          >
+            <div
+              className="font-mono font-black tracking-[3px] mb-2"
+              style={{
+                fontSize: 'clamp(14px, 2vw, 20px)',
+                color: '#ff00ff',
+                textShadow: '0 0 10px rgba(255,0,255,0.8), 0 0 40px rgba(255,0,255,0.4)',
+              }}
+            >
+              STEAL MY CODE HERE
+            </div>
+            <div
+              className="font-mono text-[11px] tracking-wide"
+              style={{
+                color: '#00ffff',
+                textShadow: '0 0 8px rgba(0,255,255,0.6)',
+              }}
+            >
+              claim it as yours &middot; i won&apos;t tell anyone &middot; i promise
+            </div>
+            <div
+              className="mt-3 font-mono font-black text-[24px] animate-bounce"
+              style={{
+                color: '#ff00ff',
+                textShadow: '0 0 12px rgba(255,0,255,0.8)',
+              }}
+            >
+              ↓ ↓ ↓
+            </div>
+            <div
+              className="font-mono text-[9px] tracking-[2px] mt-1"
+              style={{ color: '#666' }}
+            >
+              github.com/harsh2929/ripple-wave &middot; MIT LICENSE &middot; YES REALLY
+            </div>
+          </a>
         </div>
       </div>
     </section>
@@ -765,7 +1162,7 @@ function InstallCTA() {
     >
       <div className={`max-w-[700px] mx-auto reveal ${visible ? 'visible' : ''}`}>
         <div className="font-mono font-bold text-[11px] tracking-[3px] text-[#666] mb-5">
-          YOU&apos;VE SUFFERED LONG ENOUGH
+          WE DON&apos;T WANT YOUR ASMR
         </div>
         <h2
           className="font-black leading-[0.88] tracking-[-4px] mb-7"
@@ -774,14 +1171,15 @@ function InstallCTA() {
           READY TO<br />SILENCE<br />THE CLACK?
         </h2>
         <p className="text-[#555] text-[17px] mb-12 leading-relaxed">
-          Free. Open source. No account. No telemetry. Works in thirty seconds.
+          Free. Open source. No account. No telemetry. Works in thirty seconds.<br />
+          <span className="text-[14px] italic">Your coworker&apos;s mechanical keyboard is not a personality trait.</span>
         </p>
 
         <a
           href={GITHUB_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="neo-btn bg-ink text-cream px-12 py-5 text-[17px] tracking-wide"
+          className="neo-btn cta-wiggle bg-ink text-cream px-12 py-5 text-[17px] tracking-wide"
           style={{ boxShadow: '9px 9px 0 rgba(0,0,0,0.25)' }}
         >
           ⬇ INSTALL ON CHROME
@@ -810,9 +1208,9 @@ function FeatureRequest() {
   const handleSubmit = () => {
     if (!selected) return
     const noise = NOISE_TYPES.find(n => n.id === selected)
-    const subject = encodeURIComponent(`YT DeClicker Feature Request: Filter "${noise?.label}"`)
+    const subject = encodeURIComponent(`Ripple Wave Feature Request: Filter "${noise?.label}"`)
     const body = encodeURIComponent(
-      `Hi,\n\nI'd love YT DeClicker to also filter: ${noise?.emoji} ${noise?.label}\n\nSent from ytdeclicker.com`
+      `Hi,\n\nI'd love Ripple Wave to also filter: ${noise?.emoji} ${noise?.label}\n\nSent from ripplewave.app`
     )
     window.open(`mailto:harshkumar09104@gmail.com?subject=${subject}&body=${body}`)
     setSent(true)
@@ -835,7 +1233,7 @@ function FeatureRequest() {
               <span className="text-yellow">ELSE?</span>
             </h2>
             <p className="text-[#888] text-[15px] max-w-md mx-auto leading-relaxed">
-              Pick the noise that&apos;s ruining your YouTube experience.
+              Pick the noise that&apos;s ruining your viewing experience.
               One tap — we&apos;ll hear you.
             </p>
           </div>
@@ -899,9 +1297,9 @@ function Footer() {
       <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-yellow border-2 border-[#333] rounded-sm flex items-center justify-center font-mono font-black text-[10px] text-ink shadow-[2px_2px_0_#444]">
-            YD
+            RW
           </div>
-          <span className="text-white font-bold text-[15px]">YT DeClicker v3</span>
+          <span className="text-white font-bold text-[15px]">Ripple Wave v3</span>
           <span className="text-[#555] font-mono text-[11px] hidden sm:block">
             • Real-time noise suppression
           </span>
@@ -942,20 +1340,23 @@ function Footer() {
 const JSON_LD = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'YT DeClicker',
+  name: 'Ripple Wave',
   applicationCategory: 'BrowserApplication',
   operatingSystem: 'Chrome',
   description:
-    'Free Chrome extension that removes keyboard clicks and typing noise from YouTube videos in real-time using EQ filters, RNNoise ML, or DeepFilterNet3 AI.',
-  url: 'https://ytdeclicker.com',
-  downloadUrl: 'https://github.com/harsh2929/yt-declicker',
-  softwareVersion: '3',
+    'Free Chrome extension that removes keyboard clicks and typing noise from YouTube, Twitch, Reddit, X, Facebook, LinkedIn, and Kick videos in real-time using EQ filters, RNNoise ML, or DeepFilterNet3 AI.',
+  url: 'https://ripplewave.app',
+  downloadUrl: 'https://github.com/harsh2929/ripple-wave',
+  softwareVersion: '3.2.0',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   author: { '@type': 'Person', name: 'Harsh Bishnoi', url: 'https://github.com/harsh2929' },
   featureList: [
     'Real-time keyboard click removal',
     'Three AI engines: EQ Lite, RNNoise, DeepFilterNet3',
-    'Works on any YouTube video',
+    'Works on YouTube, Twitch, Reddit, X/Twitter, Facebook, LinkedIn, and Kick',
+    'Keyboard shortcut toggle (Alt+Shift+R)',
+    'Per-channel rules — always on, ask, or exclude',
+    'Auto-detect clicky videos by title and audio analysis',
     'No audio sent to any server — fully local processing',
   ],
 }
@@ -971,11 +1372,13 @@ export default function Home() {
       <Nav />
       <Hero />
       <Marquee />
+      <MissionStatement />
       <StatsStrip />
       <HowItWorks />
       <Engines />
       <Features />
       <PrivacyCallout />
+      <Pricing />
       <InstallCTA />
       <FeatureRequest />
       <Footer />

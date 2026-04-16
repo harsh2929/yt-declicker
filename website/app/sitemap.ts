@@ -3,25 +3,25 @@ import { MetadataRoute } from 'next'
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
-      url: 'https://ytdeclicker.com',
+      url: 'https://ripplewave.app',
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1.0,
     },
     {
-      url: 'https://ytdeclicker.com/docs',
+      url: 'https://ripplewave.app/docs',
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.8,
     },
     {
-      url: 'https://ytdeclicker.com/roadmap',
+      url: 'https://ripplewave.app/roadmap',
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.7,
     },
     {
-      url: 'https://ytdeclicker.com/changelog',
+      url: 'https://ripplewave.app/changelog',
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,

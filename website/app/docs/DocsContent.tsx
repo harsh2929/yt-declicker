@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 
-const GITHUB_URL = 'https://github.com/harsh2929/yt-declicker'
+const GITHUB_URL = 'https://github.com/harsh2929/ripple-wave'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TOC SECTIONS
@@ -152,10 +152,10 @@ export default function DocsContent() {
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div className="w-7 h-7 bg-yellow font-mono font-black text-[10px] flex items-center justify-center border-2 border-[#555] rounded-sm" style={{ color: '#111' }}>
-                YD
+                RW
               </div>
               <span className="font-black text-[15px] tracking-tight text-white">
-                YT De<span className="bg-yellow px-1 border border-[#555]" style={{ color: '#111' }}>CLICKER</span>
+                RIPPLE <span className="bg-yellow px-1 border border-[#555]" style={{ color: '#111' }}>WAVE</span>
               </span>
             </Link>
             <span className="text-[#555] font-mono text-[12px] hidden sm:block">/ docs</span>
@@ -227,7 +227,7 @@ export default function DocsContent() {
               className="font-black tracking-[-3px] leading-none text-white mb-5"
               style={{ fontSize: 'clamp(38px, 5vw, 64px)' }}
             >
-              YT DECLICKER<br /><span style={{ color: '#FFE500' }}>v3 DOCS</span>
+              RIPPLE WAVE<br /><span style={{ color: '#FFE500' }}>v3 DOCS</span>
             </h1>
             <p className="text-[#999] text-[16px] leading-relaxed max-w-xl">
               Deep technical internals of the extension — audio pipeline, engine architectures, CSP bypass strategy, and storage schema.
@@ -240,14 +240,14 @@ export default function DocsContent() {
             <H2 id="overview">How It Works</H2>
 
             <P>
-              YT DeClicker v3 is a Chrome Manifest v3 extension that intercepts
-              YouTube&apos;s <InlineCode>&lt;video&gt;</InlineCode> element and routes its audio
+              Ripple Wave v3 is a Chrome Manifest v3 extension that intercepts
+              the page&apos;s <InlineCode>&lt;video&gt;</InlineCode> element (YouTube or Reddit) and routes its audio
               through a real-time processing chain before it reaches your speakers — without
               touching the network or any server.
             </P>
 
             <Block accent="#FFE500">
-{`YouTube <video> element
+{`YouTube / Reddit <video> element
     │
     ▼  MediaElementSource (Web Audio API)
 ┌───────────────────────────────────┐
@@ -284,14 +284,14 @@ Your speakers / headphones`}
 {`chrome-extension/
 ├── manifest.json          MV3 declaration
 │
-├── content_script.js      Injected into every YouTube tab
+├── content_script.js      Injected into every YouTube / Reddit tab
 │   ├── Hooks <video> element via MutationObserver
 │   ├── Constructs AudioContext + chosen filter chain
 │   └── Listens for settings changes via chrome.storage.onChanged
 │
 ├── background.js          Service worker (persistent-ish)
 │   ├── Handles model download for DeepFilterNet3
-│   ├── Routes large fetch() calls to bypass YouTube CSP
+│   ├── Routes large fetch() calls to bypass site CSP
 │   └── Manages extension lifecycle events
 │
 ├── popup/                 Extension popup UI
@@ -308,8 +308,8 @@ Your speakers / headphones`}
             <P>
               The content script runs at <InlineCode>document_idle</InlineCode> on all
               <InlineCode>youtube.com/*</InlineCode> URLs. It uses a{' '}
-              <InlineCode>MutationObserver</InlineCode> to watch for YouTube&apos;s
-              client-side navigation (YouTube is a SPA — the DOM mutates rather
+              <InlineCode>MutationObserver</InlineCode> to watch for
+              client-side navigation (both YouTube and Reddit are SPAs — the DOM mutates rather
               than triggering full page loads). When a <InlineCode>&lt;video&gt;</InlineCode>{' '}
               element appears or changes, the hook re-attaches automatically.
             </P>
@@ -318,9 +318,9 @@ Your speakers / headphones`}
 {`// Simplified hook logic in content_script.js
 const observer = new MutationObserver(() => {
   const video = document.querySelector('video')
-  if (video && !video.__ydHooked) {
+  if (video && !video.__rwHooked) {
     attachFilterChain(video)
-    video.__ydHooked = true
+    video.__rwHooked = true
   }
 })
 observer.observe(document.body, { childList: true, subtree: true })`}
@@ -593,7 +593,7 @@ Total:               ~25 ms   (imperceptible on videos)`}
             <H2 id="csp-bypass">CSP Bypass &amp; Model Downloads</H2>
 
             <P>
-              YouTube enforces a strict Content Security Policy that blocks extension
+              YouTube (and Reddit) enforce Content Security Policies that blocks extension
               scripts from making arbitrary <InlineCode>fetch()</InlineCode> calls to
               external origins. Downloading the DeepFilterNet3 model directly from
               the content script would be blocked.
@@ -661,10 +661,10 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
             <P>
               Large binary assets (DeepFilterNet3 model, RNNoise WASM) are cached
               in <InlineCode>IndexedDB</InlineCode> database{' '}
-              <InlineCode>yt-declicker-cache</InlineCode>:
+              <InlineCode>ripplewave-cache</InlineCode>:
             </P>
             <Block>
-{`DB: "yt-declicker-cache"  version: 1
+{`DB: "ripplewave-cache"  version: 1
   ObjectStore: "assets"
     key: "deepfilter_v3_model"  → ArrayBuffer (~2 MB)
     key: "rnnoise_wasm"         → ArrayBuffer (~150 KB, redundant backup)
@@ -688,7 +688,7 @@ chrome.runtime.onMessage.addListener((msg, _, sendResponse) => {
             <H2 id="privacy">Privacy &amp; Security</H2>
 
             <P>
-              YT DeClicker processes audio entirely inside your browser. Here is the
+              Ripple Wave processes audio entirely inside your browser. Here is the
               complete data flow audit:
             </P>
 

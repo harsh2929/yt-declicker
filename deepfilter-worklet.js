@@ -302,115 +302,212 @@
 
     const WorkletMessageTypes = {
         SET_SUPPRESSION_LEVEL: 'SET_SUPPRESSION_LEVEL',
-        SET_BYPASS: 'SET_BYPASS'
+        SET_BYPASS: 'SET_BYPASS',
+        DESTROY: 'DESTROY'
     };
-
+    function clampSuppressionLevel(value) {
+        return Math.max(0, Math.min(100, Math.floor(value)));
+    }
+    function freeDfState(handle) {
+        if (!handle || !wasm || !wasm.__wbg_dfstate_free) {
+            return;
+        }
+        try {
+            wasm.__wbg_dfstate_free(handle);
+        }
+        catch (error) {
+        }
+    }
+    function createChannelState(modelBytes, suppressionLevel) {
+        const handle = df_create(modelBytes, suppressionLevel);
+        // Ensure the WASM state matches the processor's *current* suppression
+        // level, not just the constructor value.  A SET_SUPPRESSION_LEVEL
+        // message can arrive before any channel state exists — the processor
+        // property is updated but df_set_atten_lim is never called because
+        // channelStates is empty.  By calling it here we apply any pending
+        // level change.
+        df_set_atten_lim(handle, suppressionLevel);
+        const frameLength = df_get_frame_length(handle);
+        const bufferSize = frameLength * 4;
+        return {
+            handle,
+            frameLength,
+            bufferSize,
+            inputWritePos: 0,
+            inputReadPos: 0,
+            outputWritePos: 0,
+            outputReadPos: 0,
+            pendingDiscard: 0,
+            inputBuffer: new Float32Array(bufferSize),
+            outputBuffer: new Float32Array(bufferSize),
+            tempFrame: new Float32Array(frameLength)
+        };
+    }
     class DeepFilterAudioProcessor extends AudioWorkletProcessor {
         constructor(options) {
             super();
-            this.dfModel = null;
-            this.inputWritePos = 0;
-            this.inputReadPos = 0;
-            this.outputWritePos = 0;
-            this.outputReadPos = 0;
             this.bypass = false;
+            this.destroyed = false;
             this.isInitialized = false;
-            this.tempFrame = null;
-            this.bufferSize = 8192;
-            this.inputBuffer = new Float32Array(this.bufferSize);
-            this.outputBuffer = new Float32Array(this.bufferSize);
+            this.channelStates = [];
+            this.modelBytes = null;
+            this.maxChannels = Math.max(1, options.processorOptions.maxChannels || 2);
+            this.suppressionLevel = clampSuppressionLevel(options.processorOptions.suppressionLevel ?? 50);
+            this.port.onmessage = (event) => {
+                this.handleMessage(event.data);
+            };
             try {
-                // Initialize WASM from pre-compiled module
                 initSync(options.processorOptions.wasmModule);
-                const modelBytes = new Uint8Array(options.processorOptions.modelBytes);
-                const handle = df_create(modelBytes, options.processorOptions.suppressionLevel ?? 50);
-                const frameLength = df_get_frame_length(handle);
-                this.dfModel = { handle, frameLength };
-                this.bufferSize = frameLength * 4;
-                this.inputBuffer = new Float32Array(this.bufferSize);
-                this.outputBuffer = new Float32Array(this.bufferSize);
-                // Pre-allocate temp frame buffer for processing
-                this.tempFrame = new Float32Array(frameLength);
+                this.modelBytes = new Uint8Array(options.processorOptions.modelBytes);
                 this.isInitialized = true;
-                this.port.onmessage = (event) => {
-                    this.handleMessage(event.data);
-                };
             }
             catch (error) {
                 console.error('Failed to initialize DeepFilter in AudioWorklet:', error);
+                this.releaseResources();
                 this.isInitialized = false;
             }
         }
         handleMessage(data) {
+            if (this.destroyed) return;
             switch (data.type) {
                 case WorkletMessageTypes.SET_SUPPRESSION_LEVEL:
-                    if (this.dfModel && typeof data.value === 'number') {
-                        const level = Math.max(0, Math.min(100, Math.floor(data.value)));
-                        df_set_atten_lim(this.dfModel.handle, level);
+                    if (typeof data.value === 'number') {
+                        this.suppressionLevel = clampSuppressionLevel(data.value);
+                        for (const state of this.channelStates) {
+                            df_set_atten_lim(state.handle, this.suppressionLevel);
+                        }
                     }
                     break;
                 case WorkletMessageTypes.SET_BYPASS:
                     this.bypass = Boolean(data.value);
                     break;
+                case WorkletMessageTypes.DESTROY:
+                    this.destroy();
+                    break;
             }
         }
-        getInputAvailable() {
-            return (this.inputWritePos - this.inputReadPos + this.bufferSize) % this.bufferSize;
+        destroy() {
+            if (this.destroyed) {
+                return;
+            }
+            this.destroyed = true;
+            this.bypass = true;
+            this.releaseResources();
         }
-        getOutputAvailable() {
-            return (this.outputWritePos - this.outputReadPos + this.bufferSize) % this.bufferSize;
+        releaseResources() {
+            for (const state of this.channelStates) {
+                freeDfState(state.handle);
+            }
+            this.channelStates = [];
+            this.modelBytes = null;
+        }
+        ensureChannelStates(channelCount) {
+            if (!this.isInitialized || !this.modelBytes) {
+                return false;
+            }
+            const targetCount = Math.min(channelCount, this.maxChannels);
+            try {
+                while (this.channelStates.length < targetCount) {
+                    this.channelStates.push(createChannelState(this.modelBytes, this.suppressionLevel));
+                }
+                return true;
+            }
+            catch (error) {
+                console.error('Failed to create DeepFilter channel state:', error);
+                this.releaseResources();
+                this.isInitialized = false;
+                return false;
+            }
+        }
+        getInputAvailable(state) {
+            return (state.inputWritePos - state.inputReadPos + state.bufferSize) % state.bufferSize;
+        }
+        getOutputAvailable(state) {
+            return (state.outputWritePos - state.outputReadPos + state.bufferSize) % state.bufferSize;
+        }
+        copyThrough(inputChannels, outputChannels) {
+            const fallbackInput = inputChannels[0] || null;
+            for (let channelIndex = 0; channelIndex < outputChannels.length; channelIndex++) {
+                const source = inputChannels[channelIndex] || fallbackInput;
+                if (source) {
+                    outputChannels[channelIndex].set(source);
+                }
+                else {
+                    outputChannels[channelIndex].fill(0);
+                }
+            }
+        }
+        writeInput(state, inputChannel) {
+            for (let i = 0; i < inputChannel.length; i++) {
+                state.inputBuffer[state.inputWritePos] = inputChannel[i];
+                state.inputWritePos = (state.inputWritePos + 1) % state.bufferSize;
+            }
+        }
+        processBufferedFrames(state) {
+            while (this.getInputAvailable(state) >= state.frameLength) {
+                for (let i = 0; i < state.frameLength; i++) {
+                    state.tempFrame[i] = state.inputBuffer[state.inputReadPos];
+                    state.inputReadPos = (state.inputReadPos + 1) % state.bufferSize;
+                }
+                const processed = df_process_frame(state.handle, state.tempFrame);
+                for (let i = 0; i < processed.length; i++) {
+                    state.outputBuffer[state.outputWritePos] = processed[i];
+                    state.outputWritePos = (state.outputWritePos + 1) % state.bufferSize;
+                }
+            }
+        }
+        discardPendingOutput(state) {
+            const discard = Math.min(this.getOutputAvailable(state), state.pendingDiscard);
+            if (discard <= 0) {
+                return;
+            }
+            state.outputReadPos = (state.outputReadPos + discard) % state.bufferSize;
+            state.pendingDiscard -= discard;
+        }
+        readProcessedOutput(state, outputChannel) {
+            let readPos = state.outputReadPos;
+            for (let i = 0; i < outputChannel.length; i++) {
+                outputChannel[i] = state.outputBuffer[readPos];
+                readPos = (readPos + 1) % state.bufferSize;
+            }
+            state.outputReadPos = readPos;
+        }
+        processChannel(state, inputChannel, outputChannel) {
+            this.writeInput(state, inputChannel);
+            this.processBufferedFrames(state);
+            this.discardPendingOutput(state);
+            if (this.getOutputAvailable(state) >= outputChannel.length) {
+                this.readProcessedOutput(state, outputChannel);
+                return;
+            }
+            outputChannel.set(inputChannel);
+            state.pendingDiscard = Math.min(state.pendingDiscard + outputChannel.length, state.bufferSize);
         }
         process(inputList, outputList) {
-            const sourceLimit = Math.min(inputList.length, outputList.length);
-            const input = inputList[0]?.[0];
-            if (!input) {
+            if (this.destroyed) {
+                return false;
+            }
+            const inputChannels = inputList[0] || [];
+            const outputChannels = outputList[0] || [];
+            if (inputChannels.length === 0 || outputChannels.length === 0) {
                 return true;
             }
-            // Passthrough mode - copy input to all output channels
-            if (!this.isInitialized || !this.dfModel || this.bypass || !this.tempFrame) {
-                for (let inputNum = 0; inputNum < sourceLimit; inputNum++) {
-                    const output = outputList[inputNum];
-                    const channelCount = output.length;
-                    for (let channelNum = 0; channelNum < channelCount; channelNum++) {
-                        output[channelNum].set(input);
-                    }
-                }
+            if (this.bypass || !this.isInitialized || !this.ensureChannelStates(inputChannels.length)) {
+                this.copyThrough(inputChannels, outputChannels);
                 return true;
             }
-            // Write input to ring buffer
-            for (let i = 0; i < input.length; i++) {
-                this.inputBuffer[this.inputWritePos] = input[i];
-                this.inputWritePos = (this.inputWritePos + 1) % this.bufferSize;
+            const processedChannelCount = Math.min(inputChannels.length, outputChannels.length, this.channelStates.length);
+            for (let channelIndex = 0; channelIndex < processedChannelCount; channelIndex++) {
+                this.processChannel(this.channelStates[channelIndex], inputChannels[channelIndex], outputChannels[channelIndex]);
             }
-            const frameLength = this.dfModel.frameLength;
-            while (this.getInputAvailable() >= frameLength) {
-                // Extract frame from ring buffer
-                for (let i = 0; i < frameLength; i++) {
-                    this.tempFrame[i] = this.inputBuffer[this.inputReadPos];
-                    this.inputReadPos = (this.inputReadPos + 1) % this.bufferSize;
+            for (let channelIndex = processedChannelCount; channelIndex < outputChannels.length; channelIndex++) {
+                const source = inputChannels[channelIndex] || inputChannels[0];
+                if (source) {
+                    outputChannels[channelIndex].set(source);
                 }
-                const processed = df_process_frame(this.dfModel.handle, this.tempFrame);
-                // Write to output ring buffer
-                for (let i = 0; i < processed.length; i++) {
-                    this.outputBuffer[this.outputWritePos] = processed[i];
-                    this.outputWritePos = (this.outputWritePos + 1) % this.bufferSize;
+                else {
+                    outputChannels[channelIndex].fill(0);
                 }
-            }
-            const outputAvailable = this.getOutputAvailable();
-            if (outputAvailable >= 128) {
-                for (let inputNum = 0; inputNum < sourceLimit; inputNum++) {
-                    const output = outputList[inputNum];
-                    const channelCount = output.length;
-                    for (let channelNum = 0; channelNum < channelCount; channelNum++) {
-                        const outputChannel = output[channelNum];
-                        let readPos = this.outputReadPos;
-                        for (let i = 0; i < 128; i++) {
-                            outputChannel[i] = this.outputBuffer[readPos];
-                            readPos = (readPos + 1) % this.bufferSize;
-                        }
-                    }
-                }
-                this.outputReadPos = (this.outputReadPos + 128) % this.bufferSize;
             }
             return true;
         }

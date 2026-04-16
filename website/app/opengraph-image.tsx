@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'YT DeClicker — silence keyboard noise on YouTube'
+export const alt = 'Ripple Wave — silence keyboard noise on YouTube & Reddit'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -47,7 +47,7 @@ export default function OGImage() {
             marginBottom: 12,
           }}
         >
-          YT DeCLICKER
+          RIPPLE WAVE
         </div>
 
         {/* Subtitle */}
@@ -60,7 +60,7 @@ export default function OGImage() {
             marginBottom: 40,
           }}
         >
-          Kill keyboard noise on YouTube — instantly
+          Kill keyboard noise on YouTube & Reddit — instantly
         </div>
 
         {/* Pills */}
@@ -95,7 +95,7 @@ export default function OGImage() {
             letterSpacing: 2,
           }}
         >
-          ytdeclicker.com
+          ripplewave.app
         </div>
       </div>
     ),

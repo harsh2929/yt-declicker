@@ -4,21 +4,21 @@ import RoadmapContent from './RoadmapContent'
 export const metadata: Metadata = {
   title: 'Roadmap',
   description:
-    "See what's planned for YT DeClicker: upcoming noise removal engines, browser support, features voted by the community, and the development roadmap.",
+    "See what's planned for Ripple Wave: upcoming noise removal engines, browser support, features voted by the community, and the development roadmap.",
   alternates: { canonical: '/roadmap' },
   openGraph: {
-    title: 'YT DeClicker Roadmap',
+    title: 'Ripple Wave Roadmap',
     description:
-      'Upcoming features, community vote results, and the development roadmap for the YT DeClicker Chrome extension.',
-    url: 'https://ytdeclicker.com/roadmap',
+      'Upcoming features, community vote results, and the development roadmap for the Ripple Wave Chrome extension.',
+    url: 'https://ripplewave.app/roadmap',
   },
   other: {
     'script:ld+json': JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
       itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ytdeclicker.com' },
-        { '@type': 'ListItem', position: 2, name: 'Roadmap', item: 'https://ytdeclicker.com/roadmap' },
+        { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ripplewave.app' },
+        { '@type': 'ListItem', position: 2, name: 'Roadmap', item: 'https://ripplewave.app/roadmap' },
       ],
     }),
   },

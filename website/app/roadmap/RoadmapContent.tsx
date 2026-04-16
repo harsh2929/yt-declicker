@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 
-const GITHUB_URL = 'https://github.com/harsh2929/yt-declicker'
+const GITHUB_URL = 'https://github.com/harsh2929/ripple-wave'
 
 function GitHubIcon({ size = 20 }: { size?: number }) {
   return (
@@ -42,14 +42,14 @@ const ROADMAP_ITEMS = [
     status: 'shipped',
     version: 'v1.0',
     title: 'EQ Engine',
-    desc: 'Multi-band parametric EQ targeting 1–6 kHz keyboard click frequencies. Zero download, near-zero latency. The original DeClicker.',
+    desc: 'Multi-band parametric EQ targeting 1-6 kHz keyboard click frequencies. Zero download, near-zero latency. The original Ripple Wave.',
     tags: ['Keyboard clicks', 'EQ + Compressor', '~0ms latency'],
   },
   {
     status: 'shipped',
     version: 'v2.0',
     title: 'RNNoise ML Engine',
-    desc: "Mozilla's RNNoise neural network bundled inside the extension. Broader noise suppression beyond keyboard clicks — fan hum, background hiss.",
+    desc: "Mozilla's RNNoise neural network bundled inside the extension. Broader noise suppression beyond keyboard clicks - fan hum, background hiss.",
     tags: ['ML-based', '150KB bundled', 'Fan noise'],
   },
   {
@@ -59,39 +59,88 @@ const ROADMAP_ITEMS = [
     desc: 'State-of-the-art deep learning model (~2MB, cached locally). Full-band filtering with audiophile-grade quality.',
     tags: ['Deep AI', 'Cached locally', 'Best quality'],
   },
+  {
+    status: 'shipped',
+    version: 'v3.1',
+    title: 'Auto-Detect & Channel Rules',
+    desc: 'Keyword + audio transient detection for clicky videos. Per-channel rules: always on, ask, or exclude. Subreddit rules on Reddit.',
+    tags: ['Auto-detect', 'Channel rules', 'Smart activation'],
+  },
+  {
+    status: 'shipped',
+    version: 'v3.2',
+    title: 'Reddit Support',
+    desc: 'Full support for Reddit video posts. Shadow DOM traversal for shreddit-player, SPA navigation via History API, subreddit-level rules.',
+    tags: ['Reddit', 'Multi-platform', 'Shadow DOM'],
+  },
   // ── IN PROGRESS ──────────────────────────────────────────────────────────
   {
     status: 'progress',
-    version: 'v3.1',
+    version: 'v3.3',
     title: 'Mouse Click Suppression',
-    desc: 'Targeted filtering for mouse click transients — different frequency profile from keyboard clicks but equally distracting in gaming/tutorial videos.',
+    desc: 'Targeted filtering for mouse click transients - different frequency profile from keyboard clicks but equally distracting in gaming/tutorial videos.',
     tags: ['Mouse clicks', 'Transient detection', 'Gaming videos'],
   },
   {
     status: 'progress',
-    version: 'v3.1',
+    version: 'v3.3',
     title: 'Per-Video Intensity Memory',
-    desc: "Remember your intensity setting per YouTube channel or video. Set HEAVY for a loud typer and LIGHT for someone with a quiet keyboard — it sticks.",
+    desc: "Remember your intensity setting per channel or subreddit. Set HEAVY for a loud typer and LIGHT for a quiet keyboard - it sticks.",
     tags: ['UX improvement', 'Per-channel settings'],
   },
   // ── PLANNED ──────────────────────────────────────────────────────────────
   {
     status: 'planned',
     version: 'v4.0',
-    title: 'Fan & AC Noise Filter',
-    desc: 'Dedicated model for steady-state background noise — CPU fans, air conditioning, room hum. Spectral subtraction approach for minimal voice artifacts.',
-    tags: ['Fan noise', 'AC/HVAC', 'Steady-state noise'],
+    title: 'Firefox Extension',
+    desc: 'Port to Firefox using WebExtensions manifest. AudioWorklet and Web Audio API are fully supported. Same three engines, native Firefox addon store.',
+    tags: ['Firefox', 'Cross-browser', 'WebExtensions'],
   },
   {
     status: 'planned',
     version: 'v4.0',
-    title: 'Crowd & Room Noise',
-    desc: 'Filter out crowd chatter, conference room echo, co-working space noise. Targeted at in-person conference talks, meetup recordings, and vlogs.',
-    tags: ['Crowd noise', 'Echo', 'Conference videos'],
+    title: 'Safari Extension',
+    desc: 'Safari Web Extension using the Xcode template. Requires adapting the manifest and testing AudioWorklet support on WebKit. Full macOS + iOS Safari.',
+    tags: ['Safari', 'macOS', 'iOS'],
   },
   {
     status: 'planned',
     version: 'v4.1',
+    title: 'Twitch & Kick Support',
+    desc: 'Extend to Twitch.tv and Kick.com live streams. Hook into their HTML5 video players for real-time noise suppression during live gaming/coding streams.',
+    tags: ['Twitch', 'Kick', 'Live streams'],
+  },
+  {
+    status: 'planned',
+    version: 'v4.1',
+    title: 'Twitter/X, LinkedIn & Facebook Video',
+    desc: 'Support inline video players on X (Twitter), LinkedIn, and Facebook. Each platform uses a different video component - we handle them all.',
+    tags: ['X/Twitter', 'LinkedIn', 'Facebook'],
+  },
+  {
+    status: 'planned',
+    version: 'v4.2',
+    title: 'Vimeo, Dailymotion & Bilibili',
+    desc: 'Expand to Vimeo, Dailymotion, and Bilibili (China\'s largest video platform). Standard HTML5 video hooking with platform-specific DOM selectors.',
+    tags: ['Vimeo', 'Dailymotion', 'Bilibili'],
+  },
+  {
+    status: 'planned',
+    version: 'v4.2',
+    title: 'Universal Mode (Any HTML5 Video)',
+    desc: 'An "any page" toggle that hooks into any HTML5 video element on any website. Works on Coursera, Udemy, educational platforms, news sites, and more.',
+    tags: ['Universal', 'Any website', 'HTML5 video'],
+  },
+  {
+    status: 'planned',
+    version: 'v4.3',
+    title: 'Fan & AC Noise Filter',
+    desc: 'Dedicated model for steady-state background noise - CPU fans, air conditioning, room hum. Spectral subtraction approach for minimal voice artifacts.',
+    tags: ['Fan noise', 'AC/HVAC', 'Steady-state noise'],
+  },
+  {
+    status: 'planned',
+    version: 'v4.3',
     title: 'Adjustable Noise Profiles',
     desc: 'Save and share custom filter presets. Build a profile for a specific creator whose setup has a distinct noise signature.',
     tags: ['Custom profiles', 'Community presets', 'Per-creator'],
@@ -100,30 +149,58 @@ const ROADMAP_ITEMS = [
   {
     status: 'future',
     version: 'v5.0',
-    title: 'Background Music Separation',
-    desc: 'Separate and optionally attenuate background music from the speaker\'s voice — great for cooking/vlog content where music competes with speech.',
-    tags: ['Music vs. voice', 'Source separation', 'Advanced AI'],
+    title: 'Multilingual Noise Models',
+    desc: 'Language-aware models optimized for tonal languages (Mandarin, Thai, Vietnamese), Indic languages (Hindi, Tamil), Arabic, Japanese, and Korean. Preserves language-specific pitch patterns that generic models damage.',
+    tags: ['Multilingual', 'Tonal languages', 'Indic languages'],
   },
   {
     status: 'future',
     version: 'v5.0',
-    title: 'Echo & Reverb Removal',
-    desc: 'De-reverb to handle bathroom/bedroom recording setups. Some creators record in untreated spaces — this would make them sound like they\'re in a studio.',
-    tags: ['De-reverb', 'Room acoustics', 'Advanced DSP'],
+    title: 'RTL & CJK UI Localization',
+    desc: 'Full interface translation: Arabic, Hebrew (RTL layout), Chinese, Japanese, Korean, Hindi, Spanish, Portuguese, French, German, Russian, and more.',
+    tags: ['i18n', 'RTL support', '20+ languages'],
   },
   {
     status: 'future',
     version: 'v5.1',
-    title: 'Smart Noise Auto-Profile',
-    desc: 'Auto-detect the noise type from the first few seconds of a video and automatically select + tune the best engine. Zero configuration.',
-    tags: ['Auto-detect', 'AI classification', 'Zero-config'],
+    title: 'Custom Model Training Pipeline',
+    desc: 'Open-source training pipeline to fine-tune noise suppression models on your own data. Bring a dataset of noisy/clean pairs, get a model that runs natively in the extension.',
+    tags: ['Custom models', 'Fine-tuning', 'Open-source'],
+  },
+  {
+    status: 'future',
+    version: 'v5.1',
+    title: 'RippleNet v1: Purpose-Built Model',
+    desc: 'Our own neural network trained specifically for keyboard/mouse click removal, not general-purpose denoising. Smaller, faster, and more accurate than repurposed models like RNNoise.',
+    tags: ['Custom architecture', 'Click-specific', 'Sub-1MB'],
   },
   {
     status: 'future',
     version: 'v5.2',
-    title: 'Multi-Platform Support',
-    desc: 'Expand beyond YouTube — Twitch, Vimeo, Twitter/X videos, and any HTML5 video element on any page.',
-    tags: ['Twitch', 'All platforms', 'Universal'],
+    title: 'Adaptive Noise Fingerprinting',
+    desc: 'AI learns a creator\'s specific noise fingerprint from the first 5 seconds, then generates a session-specific suppression profile. Zero config, maximum quality.',
+    tags: ['Auto-profile', 'AI fingerprint', 'Zero-config'],
+  },
+  {
+    status: 'future',
+    version: 'v5.2',
+    title: 'Background Music Separation',
+    desc: 'Separate and optionally attenuate background music from the speaker\'s voice - great for cooking/vlog content where music competes with speech.',
+    tags: ['Music vs. voice', 'Source separation', 'Advanced AI'],
+  },
+  {
+    status: 'future',
+    version: 'v5.3',
+    title: 'Echo & Reverb Removal',
+    desc: 'De-reverb to handle bathroom/bedroom recording setups. Some creators record in untreated spaces - this would make them sound like they\'re in a studio.',
+    tags: ['De-reverb', 'Room acoustics', 'Advanced DSP'],
+  },
+  {
+    status: 'future',
+    version: 'v5.3',
+    title: 'On-Device WASM Model Marketplace',
+    desc: 'Community marketplace for noise models. Creators and researchers publish models, users browse and install with one click. All models run on-device via WASM.',
+    tags: ['Marketplace', 'Community models', 'WASM'],
   },
 ]
 
@@ -144,10 +221,10 @@ export default function RoadmapContent() {
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 no-underline">
             <div className="w-9 h-9 bg-[#FFE500] font-mono font-black text-[11px] flex items-center justify-center border-2 border-[#111] rounded-sm" style={{ boxShadow: '2px 2px 0 #111' }}>
-              YD
+              RW
             </div>
             <span className="font-black text-[17px] tracking-tight">
-              YT De<span className="bg-[#FFE500] px-1 border border-[#111]">CLICKER</span>
+              RIPPLE <span className="bg-[#FFE500] px-1 border border-[#111]">WAVE</span>
             </span>
           </Link>
 
@@ -193,8 +270,9 @@ export default function RoadmapContent() {
             </span>
           </h1>
           <p className="text-[#555] text-[17px] max-w-xl mx-auto leading-relaxed">
-            Keyboard clicks are just the beginning. We&apos;re building a complete
-            YouTube noise elimination suite — one engine at a time.
+            Keyboard clicks were just the beginning. From browser extensions across
+            every platform to custom-trained AI models — we&apos;re building the
+            universal noise elimination suite.
           </p>
         </div>
       </section>
@@ -257,7 +335,7 @@ export default function RoadmapContent() {
             ← Back to homepage
           </Link>
           <div className="font-mono text-[11px] text-[#444]">
-            MIT License • YT DeClicker
+            MIT License • Ripple Wave
           </div>
         </div>
       </footer>
